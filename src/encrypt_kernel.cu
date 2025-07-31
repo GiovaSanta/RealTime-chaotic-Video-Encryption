@@ -1,47 +1,68 @@
-#include "encrypt_kernel.hpp"
+#include "../include/encrypt_kernel.hpp"
 #include <cuda_runtime.h>
 #include <iostream>
 
-__global__ void encryptFrameKernel(uint8_t *input, uint8_t *output, int width, int height) {
+__device__ float prbg_PLCM(float x. float k){
+    if(x >= 0.0f && x < k)
+        return x/k ;
+    else if ( x >= k && x < 0.5f)
+        return (x - k) / (0.5f - k) ;
+    else if ( x >= 0.5f && x< 1.0f - k)
+        return (1.0f - k - x) / (0.5f - k);
+    else
+        return (1.0f - x) / k ;
+}
 
-    //For now nothing is in this kernel. is dummmy kernl to check if compilation of main.cpp is succesull 
+__global__ void encryptFrameKernel(const unsigned char *input, unsigned char *output, int width, int height, float seed, float k) {
 
     int x = threadIdx.x + blockIdx.x * blockDim.x ;
     int y = threadIdx.y + blockIdx.y * blockDim.y ;
     
-    int idx = y * width +x ;
+    int idx = y * width + x ;
 
     if( x < width && y < height ) {
-        output[idx] = input[idx] - 50; //simple trasformation for now
+       
+        //initializing chaotic value using a seed + per-thread offset
+        float chaos = seed  ;
+       
+        //iterating the PLCM (Piecewise Linear Chaotic Map) for a few times
+        for ( int i = 0 ; i < 5; ++i) {
+            chaos = prbg_PLCM(chaos, k);
+        }
+
+        //creating a pseudoRandom byte
+        unsigned char key = static_cast<unsigned char>(chaos * 255.0f);
+        //XOR with pixel
+        output[idx] = input[idx] ^ key;
+    
     }
 
 }
 
 //Wrapper function for the CUDA kernel function.
 
- void encryptFrame(uint8_t *input, uint8_t *output, int width, int height) {
+ void encryptFrame(const cv::Mat& input, cv::Mat& output, float seed, float k) {
     
-    uint8_t *d_input, *d_output;
-    size_t size = width * height * sizeof(uint8_t);
+    int width = input.cols;
+    int height = input.rows;
+    unsigned char *d_input, *d_output;
+    size_t size = width * height * sizeof(unsigned char);
 
     //Allocation of the device memory 
     cudaMalloc(&d_input, size);
     cudaMalloc(&d_output, size);
 
-    cudaMemcpy(d_input, input, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_input, input.data, size, cudaMemcpyHostToDevice);
 
     dim3 blockDim(16, 16); //256 threads per block for now
-    dim3 gridDim((width + 15) / 16, (height + 15) / 16); //Cover entire image
+    dim3 gridDim((width + blockDim.x -1) / blockDim.x,
+                 (height + blockDim.y -1) / blockDim.y); //Cover entire image
 
-    encryptFrameKernel<<<gridDim, blockDim>>>(d_input, d_output, width, height);
+    encryptFrameKernel<<<gridDim, blockDim>>>(d_input, d_output, width, height, seed, k);
 
-    cudaError_t err = cudaGetLastError();
-    if(err != cudaSuccess){
-        std::cerr << "CUDA kernel launch error: " << cudaGetErrorString(err) << std::endl;
-    }
-    cudaDeviceSynchronize();
+    //cudaDeviceSynchronize();
 
-    cudaMemcpy(output, d_output, size, cudaMemcpyDeviceToHost);
+    cudaMemcpy(output.data, d_output, size, cudaMemcpyDeviceToHost);
 
     cudaFree(d_input);
     cudaFree(d_output);

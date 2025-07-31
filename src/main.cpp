@@ -2,28 +2,38 @@
 #include <opencv2/opencv.hpp>
 #include <vector>
 #include <stdint.h>
-#include "encrypt_kernel.hpp"
+#include "../include/encrypt_kernel.hpp"
+#include "../include/prbg_main_plcm.hpp"
 
 int main () {
 
-    //load the image (grayScale mode for now)
-    cv::Mat inputImg = cv::imread("initialTestFrame.png", cv::IMREAD_GRAYSCALE);
-    if( inputImg.empty()) {
-        std::cerr << "Failed to load Image!\n";
+    double globalKey = 0.123456 ; //used for PRBGmain initialization. is a double value (0,0.5)
+    double p = 0.3; //control parameter for the PRBGmain . is a value in (0,0.5)
+    int numKeys =128 ;  // each iteration of the PRBG main is a resultant input seed...
+                        //...for the future subsequent PRBGas as described by article
+    
+
+    std::vector<double> keys = generatePRBGMainKeys( globalKey, p, 128 );
+    //load the Frame (grayScale mode for now)
+    cv::Mat inputFrame = cv::imread("../testFrames/initialTestFrame.png", cv::IMREAD_GRAYSCALE);
+    
+    //quick check if frame exists
+    if( inputFrame.empty()) {
+        std::cerr << "Failed to load Frame!\n";
         return -1;
     }
-    int width = inputImg.cols;
-    int height = inputImg.rows;
    
-    std::vector<uint8_t> encrypted_data(width * height);
+    cv::Mat encryptedFrame(inputFrame.size(), inputFrame.type() );
 
-    //calling the wrapper
-    encryptFrame(inputImg.data, encrypted_data.data(), width, height);
+    float seed = 0.7f; // for PRBG
+    float k = 0.5f; // control parameter for PiecewiseLinearChaoticMap (PLCM)
+
+
+    //calling the wrapper for the kernel
+    //encryptFrame(inputFrame, encryptedFrame, seed, k);
 
     //Copying the result back to the host environment
-    cv::Mat outputImg(height, width, CV_8UC1, encrypted_data.data());
-    
-    cv::imwrite("encrypted_output.png", outputImg);
+    cv::imwrite("../testFrames/encrypted_output.png", encryptedFrame);
 
     std::cout << "Encryption complete. Saved as encrypted_output.png\n";
     
