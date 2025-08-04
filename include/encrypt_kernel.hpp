@@ -6,6 +6,6 @@
 //host-side wrapper function which is called from main.cpp
 
 void encryptFrame(uint8_t *input, uint8_t * output, int width, int height) ;
-void PRBGAKernelWrapper(const std::vector<double>& keysAndControlPs, std::vector<uint8_t>& output1_bytes, std::vector<uint8_t>& output2_bytes, double sc, const int PRBGAiterations);
+void PRBGAKernelWrapper(const std::vector<double>& keysAndControlPs, std::vector<uint8_t>& byteStreamFinal, std::vector<uint8_t>& output1_bytes, std::vector<uint8_t>& output2_bytes, double sc, const int PRBGAiterations);
 
 #endif
