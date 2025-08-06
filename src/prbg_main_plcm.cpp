@@ -1,6 +1,6 @@
 #include "../include/prbg_main_plcm.hpp"
 
-std::vector<double> generatePRBGMainKeys(double x0, double p, int numParameters4subsequentPRBGas, double *sc) {
+std::vector<double> generatePRBGMainKeys(double x0, double p, int numParameters4subsequentPRBGas, int *sc) {
 
     //parameters4subsequentPRBGas , each future PRBGa will be fed with a key (x0) and p (controlParameter)
     std::vector<double> keysAndControlPs ;
@@ -35,7 +35,10 @@ std::vector<double> generatePRBGMainKeys(double x0, double p, int numParameters4
             keysAndControlPs.push_back(xi);
             std::cout << "PRBG[ " << i << "] = " << keysAndControlPs[i] << std::endl; //debugging purposes
         } else {
-            *sc = xi ;  
+            //*sc = xi ;
+            *sc = static_cast<int>(xi * 1000000) ;  
+            //*sc = 1000000;
+            //*sc=1000000;
             std::cout << "PRBG[ " << i << "] = " << *sc << " (this is the global sc value)" << std::endl; //debugging purposes
         } 
         

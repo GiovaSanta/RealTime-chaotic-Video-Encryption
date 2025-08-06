@@ -4,6 +4,6 @@
 #include <vector>
 #include <iostream>
 
-std::vector<double> generatePRBGMainKeys(double x0, double p, int numParameters4subsequentPRBGas, double *sc);
+std::vector<double> generatePRBGMainKeys(double x0, double p, int numParameters4subsequentPRBGas, int *sc);
 
 #endif
