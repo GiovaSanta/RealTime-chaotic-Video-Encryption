@@ -60,16 +60,9 @@ int main () {
     //saving the output image after the confusion step
     cv::imwrite("afterConfusion.png", outputFrameConfusion );
     
-//INVERSE OF CONFUSION 
-
-    performInverseConfusion = 1; // doing the inverse of the confusiion to see if we are able to obtain the original image from the confused one.
-    confusionOpWrapper(outputFrameConfusion.data, encrypted_data.data(), width, height, sc, performInverseConfusion );
-    cv::Mat outputFrameInvConfusion(height, width, CV_8UC1, encrypted_data.data() );
-    cv::imwrite("afterInvConfusion.png", outputFrameInvConfusion );
-
 //DIFFUSION
     int performInverseDiffusion = 0 ;
-    diffusionOpWrapper( outputFrameInvConfusion.data, encrypted_data.data(), byteStreamFinal.data(), width, height, performInverseDiffusion ) ;
+    diffusionOpWrapper( outputFrameConfusion.data, encrypted_data.data(), byteStreamFinal.data(), width, height, performInverseDiffusion ) ;
     cv::Mat outputFrameDiffusion(height, width, CV_8UC1, encrypted_data.data() );
     cv::imwrite("afterDiffusion.png", outputFrameDiffusion);
 
@@ -78,7 +71,15 @@ int main () {
     performInverseDiffusion = 1;
     diffusionOpWrapper( outputFrameDiffusion.data, encrypted_data.data(), byteStreamFinal.data(), width, height, performInverseDiffusion ) ;
     cv::Mat outputFrameInvDiffusion(height, width, CV_8UC1, encrypted_data.data() ) ;
-    cv::imwrite("afterInvDiffusion.png", outputFrameInvDiffusion) ;
+    cv::imwrite("afterInvDiffusion.png", outputFrameInvDiffusion) ;    
+//INVERSE OF CONFUSION 
+
+    performInverseConfusion = 1; // doing the inverse of the confusiion to see if we are able to obtain the original image from the confused one.
+    confusionOpWrapper(outputFrameInvDiffusion.data, encrypted_data.data(), width, height, sc, performInverseConfusion );
+    cv::Mat outputFrameInvConfusion(height, width, CV_8UC1, encrypted_data.data() );
+    cv::imwrite("afterInvConfusion.png", outputFrameInvConfusion );
+
+
 
     //converting the result back to cv::Mat
     //cv::Mat confusedFrame( height, width, CV_8UC1, confusedVector.data() ) ;
