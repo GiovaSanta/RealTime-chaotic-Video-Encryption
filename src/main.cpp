@@ -6,6 +6,7 @@
 #include "../include/confusion_kernel.hpp"
 #include "../include/diffusion_kernel.hpp"
 
+#define ROUNDS 5
 
 int main () {
 
@@ -25,7 +26,7 @@ int main () {
                         the byte stream of a specific subframe is that of dimension 768*6 .
                         */
     const int PRBGAiterations = 768 ; 
-    int sc ;
+    uint64_t sc ;
 
     //generating the keys and control parameters that will be fed to future PRBGas
     std::vector<double> keysAndControlPs = generatePRBGMainKeys( globalKey, p, 2*numKeys +1 , &sc ) ; // +1 for sc generation
@@ -49,35 +50,54 @@ int main () {
     int height = inputFrame.rows;
     printf ("width : %d, height: %d \n", width, height) ;
 
-    std::vector<unsigned char> encrypted_data(width * height);
-
-
-//CONFUSION
+    cv::Mat current = inputFrame.clone() ;
+    std::vector<unsigned char> buffer(width * height);
 
     int performInverseConfusion = 0;
-    confusionOpWrapper(inputFrame.data, encrypted_data.data(), width, height, sc, performInverseConfusion);  
-    cv::Mat outputFrameConfusion(height, width, CV_8UC1,encrypted_data.data() );
-    //saving the output image after the confusion step
-    cv::imwrite("afterConfusion.png", outputFrameConfusion );
+    int performInverseDiffusion = 0 ;
+
+for( int i = 0; i< ROUNDS; i ++){
+//CONFUSION
+    
+    confusionOpWrapper(current.data, buffer.data(), width, height, sc, performInverseConfusion);  
+    current = cv::Mat(height, width, CV_8UC1,buffer.data()).clone();
+
+    //saving image data after the confusion step...
+    std::string filenameConfusion = "afterConfusion" + std::to_string(i) +".png" ;
+    cv::imwrite(filenameConfusion, current );
     
 //DIFFUSION
-    int performInverseDiffusion = 0 ;
-    diffusionOpWrapper( outputFrameConfusion.data, encrypted_data.data(), byteStreamFinal.data(), width, height, performInverseDiffusion ) ;
-    cv::Mat outputFrameDiffusion(height, width, CV_8UC1, encrypted_data.data() );
-    cv::imwrite("afterDiffusion.png", outputFrameDiffusion);
+    
+    diffusionOpWrapper( current.data, buffer.data(), byteStreamFinal.data(), width, height, performInverseDiffusion ) ;
+    current = cv::Mat(height, width, CV_8UC1, buffer.data()).clone();
+
+    std::string filenameDiffusion = "afterDiffusion" + std::to_string(i) +".png" ;
+    cv::imwrite(filenameDiffusion, current );
+}
+
+performInverseDiffusion = 1;
+performInverseConfusion = 1; // doing the inverse of the confusiion to see if we are able to obtain the original image from the confused one.
+
+for( int i = ROUNDS-1 ; i >=0; i --){
 
 //INVERSE OF DIFFUSION
     //here performing the inverse of the diffusion to see if i am able to obtain the original frame back implying diffusion operations make sense.
-    performInverseDiffusion = 1;
-    diffusionOpWrapper( outputFrameDiffusion.data, encrypted_data.data(), byteStreamFinal.data(), width, height, performInverseDiffusion ) ;
-    cv::Mat outputFrameInvDiffusion(height, width, CV_8UC1, encrypted_data.data() ) ;
-    cv::imwrite("afterInvDiffusion.png", outputFrameInvDiffusion) ;    
+    
+    diffusionOpWrapper( current.data, buffer.data(), byteStreamFinal.data(), width, height, performInverseDiffusion ) ;
+    current = cv::Mat(height, width, CV_8UC1, buffer.data()).clone() ;
+    
+    std::string filenameInvDiffusion = "afterInvDiffusion" + std::to_string(i) + ".png" ;
+    cv::imwrite( filenameInvDiffusion, current) ;    
 //INVERSE OF CONFUSION 
 
-    performInverseConfusion = 1; // doing the inverse of the confusiion to see if we are able to obtain the original image from the confused one.
-    confusionOpWrapper(outputFrameInvDiffusion.data, encrypted_data.data(), width, height, sc, performInverseConfusion );
-    cv::Mat outputFrameInvConfusion(height, width, CV_8UC1, encrypted_data.data() );
-    cv::imwrite("afterInvConfusion.png", outputFrameInvConfusion );
+    confusionOpWrapper(current.data, buffer.data(), width, height, sc, performInverseConfusion );
+    current = cv::Mat(height, width, CV_8UC1, buffer.data()).clone() ;
+    
+    std::string filenameInvConfusion = "afterInvConfusion" + std::to_string(i) + ".png" ;
+    cv::imwrite(filenameInvConfusion, current );
+
+}
+
 
 
 

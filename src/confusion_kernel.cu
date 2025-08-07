@@ -5,7 +5,7 @@
 #include <iostream>
 
 
-__global__ void inverseConfusionKernel ( const unsigned char *input, unsigned char *output, int width, int sc ){
+__global__ void inverseConfusionKernel ( const unsigned char *input, unsigned char *output, int width, uint64_t sc ){
     int tid_x = threadIdx.x ; //0 to 153
     int tid_y = threadIdx.y ; // 0 to 5
     
@@ -35,7 +35,7 @@ __global__ void inverseConfusionKernel ( const unsigned char *input, unsigned ch
     }
 }
 
-__global__ void confusionKernel( const unsigned char *input, unsigned char * output, int width, int sc){
+__global__ void confusionKernel( const unsigned char *input, unsigned char * output, int width, uint64_t sc){
 
     int tid_x = threadIdx.x ; //0 to 153
     int tid_y = threadIdx.y ; // 0 to 5
@@ -67,7 +67,7 @@ __global__ void confusionKernel( const unsigned char *input, unsigned char * out
 
 }
 
-void confusionOpWrapper( unsigned char *input, unsigned char *output, int width , int height, int sc, int performInverseConfusion ) {
+void confusionOpWrapper( unsigned char *input, unsigned char *output, int width , int height, uint64_t sc, int performInverseConfusion ) {
 
     const int subframe_height = 6;
     const int total_pixels = width * height ;

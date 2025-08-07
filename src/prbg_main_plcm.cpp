@@ -1,6 +1,6 @@
 #include "../include/prbg_main_plcm.hpp"
 
-std::vector<double> generatePRBGMainKeys(double x0, double p, int numParameters4subsequentPRBGas, int *sc) {
+std::vector<double> generatePRBGMainKeys(double x0, double p, int numParameters4subsequentPRBGas, uint64_t *sc) {
 
     //parameters4subsequentPRBGas , each future PRBGa will be fed with a key (x0) and p (controlParameter)
     std::vector<double> keysAndControlPs ;
@@ -36,7 +36,8 @@ std::vector<double> generatePRBGMainKeys(double x0, double p, int numParameters4
             std::cout << "PRBG[ " << i << "] = " << keysAndControlPs[i] << std::endl; //debugging purposes
         } else {
             //*sc = xi ;
-            *sc = static_cast<int>(xi * 1000000) ;  
+            *sc = static_cast<uint64_t>(xi * 10000000000) ;  
+            //*sc = 1000000000 ;  //if i increase for one more order of magnitude then this one, encryption of frame breaks
             //*sc = 1000000;
             //*sc=1000000;
             std::cout << "PRBG[ " << i << "] = " << *sc << " (this is the global sc value)" << std::endl; //debugging purposes
