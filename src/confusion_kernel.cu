@@ -95,5 +95,4 @@ void confusionOpWrapper( unsigned char *input, unsigned char *output, int width 
 
     cudaFree(d_input);
     cudaFree(d_output);
-
 }

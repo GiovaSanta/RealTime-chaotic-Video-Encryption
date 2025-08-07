@@ -32,7 +32,7 @@ __device__ void prbga_plcm(double xi, double p, double *output, int numValuesGen
     }
 }
 
-__global__ void prbgaKernel( uint8_t *finalByteStream, uint8_t *output1_bytes, uint8_t *output2_bytes, const double *prbga_keys_and_control_ps, const int numValuesGeneratedPRBGA) {
+__global__ void prbgaKernel( unsigned char *finalByteStream, unsigned char *output1_bytes, unsigned char *output2_bytes, const double *prbga_keys_and_control_ps, const int numValuesGeneratedPRBGA) {
 
     int blockId = blockIdx.x ;
     int tid = threadIdx.x;
@@ -82,7 +82,7 @@ __global__ void prbgaKernel( uint8_t *finalByteStream, uint8_t *output1_bytes, u
 
 //the wrapper for the above kernel 
 
-void PRBGAandByteStreamGenWrapper(const std::vector<double>& keysAndControlPs, std::vector<uint8_t>& byteStreamFinal, std::vector<uint8_t>& output1_bytes, std::vector<uint8_t>& output2_bytes, const int PRBGAiterations){
+void PRBGAandByteStreamGenWrapper(const std::vector<double>& keysAndControlPs, std::vector<unsigned char>& byteStreamFinal, std::vector<unsigned char>& output1_bytes, std::vector<unsigned char>& output2_bytes, const int PRBGAiterations){
 
     int numParameters = keysAndControlPs.size();
     
@@ -90,15 +90,15 @@ void PRBGAandByteStreamGenWrapper(const std::vector<double>& keysAndControlPs, s
     int numKeys = numParameters/2;
     printf("numKeys: %d\n", numKeys);
 
-    int totalSize = numKeys * PRBGAiterations * 6 ;//should be 128 * 768 *8 . is the total size which considers all the arrays of values reproduced by all called PRBGAs. its expressed in bytes. 
+    int totalSize = numKeys * PRBGAiterations * 6 ;//should be 128 * 768 *6 . is the total size which considers all the arrays of values reproduced by all called PRBGAs. its expressed in bytes. 
 
     //allocating device memory
     double * d_keysAndControlPs; // creating cuda array pointer for containing keys and control parameter inputs to the various PRBGAs
 
-    uint8_t * d_values4ByteStream_1 ; 
-    uint8_t * d_values4ByteStream_2 ;
+    unsigned char * d_values4ByteStream_1 ; 
+    unsigned char * d_values4ByteStream_2 ;
 
-    uint8_t * d_byteStreamFinal ; // this is the final byte stream array containing all the 128 bytestream arrays contigously in memory. 
+    unsigned char * d_byteStreamFinal ; // this is the final byte stream array containing all the 128 bytestream arrays contigously in memory. 
                                 //it is of size 128 * 768 * 6 bytes, and it will be used for the diffusion step of the encryption.
 
     cudaMalloc(&d_keysAndControlPs, numParameters * sizeof( double ) );
@@ -107,16 +107,15 @@ void PRBGAandByteStreamGenWrapper(const std::vector<double>& keysAndControlPs, s
     cudaMemcpy(d_keysAndControlPs, keysAndControlPs.data(), numParameters * sizeof(double), cudaMemcpyHostToDevice);
     
     //allocating space for each individual array on the device
-    cudaMalloc( (void **) &d_values4ByteStream_1, totalSize * sizeof( uint8_t ) );
-    cudaMalloc( (void **) &d_values4ByteStream_2, totalSize * sizeof( uint8_t ) );
-    cudaMalloc( (void **) &d_byteStreamFinal, totalSize * sizeof( uint8_t) ) ;
+    cudaMalloc( (void **) &d_values4ByteStream_1, totalSize * sizeof( unsigned char ) );
+    cudaMalloc( (void **) &d_values4ByteStream_2, totalSize * sizeof( unsigned char ) );
+    cudaMalloc( (void **) &d_byteStreamFinal, totalSize * sizeof( unsigned char) ) ;
 
     //launch the kernel
     dim3 blocks(numKeys);
     dim3 threads(PRBGAiterations); //768 the threads per block are 768
 
-    prbgaKernel<<<blocks, threads>>>( d_byteStreamFinal, d_values4ByteStream_1, d_values4ByteStream_2, 
-                                      d_keysAndControlPs, PRBGAiterations ) ;
+    prbgaKernel<<<blocks, threads>>>( d_byteStreamFinal, d_values4ByteStream_1, d_values4ByteStream_2, d_keysAndControlPs, PRBGAiterations ) ;
     cudaDeviceSynchronize();
    
     //copy results back  
@@ -124,10 +123,10 @@ void PRBGAandByteStreamGenWrapper(const std::vector<double>& keysAndControlPs, s
     output2_bytes.resize( totalSize ) ; 
     byteStreamFinal.resize ( totalSize ) ;
 
-    cudaMemcpy(output1_bytes.data(), d_values4ByteStream_1, totalSize * sizeof(uint8_t), cudaMemcpyDeviceToHost);
-    cudaMemcpy(output2_bytes.data(), d_values4ByteStream_2, totalSize * sizeof(uint8_t), cudaMemcpyDeviceToHost) ;
+    cudaMemcpy(output1_bytes.data(), d_values4ByteStream_1, totalSize * sizeof( unsigned char), cudaMemcpyDeviceToHost);
+    cudaMemcpy(output2_bytes.data(), d_values4ByteStream_2, totalSize * sizeof( unsigned char), cudaMemcpyDeviceToHost) ;
     
-    cudaMemcpy(byteStreamFinal.data(), d_byteStreamFinal, totalSize * sizeof(uint8_t), cudaMemcpyDeviceToHost) ;
+    cudaMemcpy(byteStreamFinal.data(), d_byteStreamFinal, totalSize * sizeof( unsigned char), cudaMemcpyDeviceToHost) ;
     
     //clean up
     cudaFree(d_keysAndControlPs);
