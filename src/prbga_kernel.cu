@@ -84,7 +84,7 @@ __global__ void prbgaKernel( unsigned char *finalByteStream, unsigned char *outp
 
 void PRBGAandByteStreamGenWrapper(const std::vector<double>& keysAndControlPs, std::vector<unsigned char>& byteStreamFinal, std::vector<unsigned char>& output1_bytes, std::vector<unsigned char>& output2_bytes, const int PRBGAiterations){
 
-    int numParameters = keysAndControlPs.size();
+    int numParameters = keysAndControlPs.size(); // parameters being the keys and control parameters for the subfframes
     
     printf("numParameters: %d\n", numParameters);
     int numKeys = numParameters/2;
