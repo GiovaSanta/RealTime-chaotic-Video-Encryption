@@ -7,7 +7,7 @@
 #include "../include/confusion_kernel.hpp"
 #include "../include/diffusion_kernel.hpp"
 
-#define ROUNDS 1
+#define ROUNDS 5
 
 int main () {
 
@@ -90,11 +90,12 @@ for( int i = 0; i< ROUNDS; i ++){
     
 //DIFFUSION
     
-    /*diffusionOpWrapper( current.data, buffer.data(), byteStreamFinal.data(), width, height, performInverseDiffusion ) ;
-    current = cv::Mat(height, width, CV_8UC1, buffer.data()).clone();
+    diffusionOpWrapper( current.data, buffer.data(), byteStreamFinal.data(), width, height, performInverseDiffusion ) ;
+    current = cv::Mat(height, width, CV_8UC3, buffer.data()).clone();
 
     std::string filenameDiffusion = "testResults/afterDiffusion" + std::to_string(i) +".png" ;
-    cv::imwrite(filenameDiffusion, current );*/
+    cv::imwrite(filenameDiffusion, current );
+
 }
 
 performInverseDiffusion = 1;
@@ -105,11 +106,12 @@ for( int i = ROUNDS-1 ; i >=0; i --){
 //INVERSE OF DIFFUSION
     //here performing the inverse of the diffusion to see if i am able to obtain the original frame back implying diffusion operations make sense.
     
-    /*diffusionOpWrapper( current.data, buffer.data(), byteStreamFinal.data(), width, height, performInverseDiffusion ) ;
-    current = cv::Mat(height, width, CV_8UC1, buffer.data()).clone() ;
+    diffusionOpWrapper( current.data, buffer.data(), byteStreamFinal.data(), width, height, performInverseDiffusion ) ;
+    current = cv::Mat(height, width, CV_8UC3, buffer.data()).clone() ;
     
     std::string filenameInvDiffusion = "testResults/afterInvDiffusion" + std::to_string(i) + ".png" ;
-    cv::imwrite( filenameInvDiffusion, current) ;    */
+    cv::imwrite( filenameInvDiffusion, current) ;    
+
 //INVERSE OF CONFUSION 
 
     confusionOpWrapper(current.data, buffer.data(), width, height, sc, performInverseConfusion );

@@ -89,7 +89,7 @@ void confusionOpWrapper( unsigned char *input, unsigned char *output, int width 
 
     cudaMemcpy(d_input, input, total_pixels * 3 * sizeof(unsigned char), cudaMemcpyHostToDevice) ;
 
-    dim3 blocksPerGrid(128 * 3);
+    dim3 blocksPerGrid(128 * 3 ); 
     dim3 threadsPerBlock(154,6) ; // maximum number of threads per block that can be allocated.
 
     if(performInverseConfusion == 0){
