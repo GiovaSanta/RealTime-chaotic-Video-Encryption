@@ -54,7 +54,7 @@ __global__ void diffusionKernel(const unsigned char *input, unsigned char *outpu
 
     if (tid == 0 ){
 
-        int startRow =   (blockId % 128) * (width/num_subframes) ;  //startRow of the subframe
+        int startRow =   (blockId % num_subframes) * (width/num_subframes) ;  //startRow of the subframe
         int endRow = startRow + (width/num_subframes) - 1 ;
         //printf ( "startRow of blockId %d: %d \n", blockId, startRow) ;
 
@@ -112,6 +112,9 @@ void diffusionOpWrapper( unsigned char *input, unsigned char *output, unsigned c
     unsigned char *d_input ;
     unsigned char *d_output ;
     unsigned char *d_byteStream ;  // space which contains all of the byte streams that have to be applied to all of the subframes...
+
+    printf("total_pixels: %d\n", total_pixels) ;
+    printf("num_subframes: %d\n", num_subframes) ;
 
     cudaMalloc(&d_input, total_pixels * NUM_CHANNELS * sizeof( unsigned char ) ) ;
     cudaMalloc(&d_output, total_pixels * NUM_CHANNELS * sizeof( unsigned char ) ) ;

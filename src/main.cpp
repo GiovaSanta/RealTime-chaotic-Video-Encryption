@@ -27,7 +27,7 @@ int main () {
     std::cout << "Max grid dimensions: (" << maxGridDimX << ", "<< maxGridDimY << ", " << maxGridDimZ << ")" << std::endl;
 
     //load the Frame (grayScale mode for now)
-    cv::Mat inputFrame = cv::imread("testFrames/shrekAndDonkey768x768.png", cv::IMREAD_COLOR);
+    cv::Mat inputFrame = cv::imread("testFrames/link960x960.png", cv::IMREAD_COLOR);
     
     //quick check if frame exists
     if( inputFrame.empty()) {
@@ -83,7 +83,6 @@ for( int i = 0; i< ROUNDS; i ++){
  
     current = cv::Mat(height, width, CV_8UC3, buffer.data()).clone();
 
-    //saving image data after the confusion step...
     std::string filenameConfusion = "testResults/afterConfusion" + std::to_string(i) +".png" ;
     cv::imwrite(filenameConfusion, current );
     
