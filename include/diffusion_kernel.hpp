@@ -5,6 +5,6 @@
 #include <opencv2/opencv.hpp> 
 #include <cstdint>
 
-void diffusionOpWrapper(  unsigned char *input, unsigned char *output, unsigned char *byteStreamFinal, int width , int height, int performInverseDiffusion);
+void diffusionOpWrapper(  unsigned char *input, unsigned char *output, unsigned char *byteStreamFinal, int width , int height, int subframe_height, int performInverseDiffusion);
 
 #endif 

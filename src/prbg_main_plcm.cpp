@@ -42,7 +42,6 @@ std::vector<double> generatePRBGMainKeys(double x0, double p, int numParameters4
             //*sc=10;
             std::cout << "PRBG[ " << i << "] = " << *sc << " (this is the global sc value)" << std::endl; //debugging purposes
         } 
-        
     }
     return keysAndControlPs;
     

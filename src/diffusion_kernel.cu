@@ -2,6 +2,8 @@
 #include <stdint.h>
 #include "../include/diffusion_kernel.hpp"
 
+#define NUM_CHANNELS 3
+
 //#define TOTALPIXELSSUBFRAME 4608 //the specifc subframe at focus is 6 * 768 pixels in total
 
 __device__ void diffusionSeq(int startRow, int endRow, int width, unsigned char sd, const unsigned char *input, const unsigned char *byte_stream, unsigned char *output, int channelOffset, int performInverseDiffusion ){
@@ -11,11 +13,11 @@ __device__ void diffusionSeq(int startRow, int endRow, int width, unsigned char 
     if(performInverseDiffusion == 0){
         for ( int y = startRow ; y <= endRow ; y++ ) {
             for( int x = 0; x < width ; x ++){
-                b_byte = byte_stream[ y * width*3 + x*3 + channelOffset];
+                b_byte = byte_stream[ y * width*NUM_CHANNELS + x*NUM_CHANNELS + channelOffset];
                 if( y == startRow && x == 0) {
-                    output[y*width*3+x*3 + channelOffset] = b_byte ^ ( input[y*width*3 + x*3 + channelOffset] + b_byte ) ^ sd ;
+                    output[y*width*NUM_CHANNELS+x*NUM_CHANNELS + channelOffset] = b_byte ^ ( input[y*width*NUM_CHANNELS + x*NUM_CHANNELS + channelOffset] + b_byte ) ^ sd ;
                 } else {
-                    output[y*width*3+x*3 + channelOffset ] = b_byte ^ ( input[y*width*3 + x*3 + channelOffset] + b_byte ) ^ output[ y*width*3 +(x-1)*3 + channelOffset] ;
+                    output[y*width*NUM_CHANNELS+x*NUM_CHANNELS + channelOffset ] = b_byte ^ ( input[y*width*NUM_CHANNELS + x*NUM_CHANNELS + channelOffset] + b_byte ) ^ output[ y*width*NUM_CHANNELS +(x-1)*NUM_CHANNELS + channelOffset] ;
                 }
                 //output[y*width*3 + x*3 ] = 100;
             }
@@ -23,11 +25,11 @@ __device__ void diffusionSeq(int startRow, int endRow, int width, unsigned char 
     } else{ // doing inverse of diffusion .. remember that in the inverse Diffusion operation the input is the ciberSubFrame, the output will be the input subframe which was provided to the diffusion step
         for ( int y = endRow ; y >= startRow ; y-- ) {
             for( int x = width - 1; x >=0 ; x -- ){
-                b_byte = byte_stream[ y * width * 3 + x * 3 + channelOffset];
+                b_byte = byte_stream[ y * width * NUM_CHANNELS + x * NUM_CHANNELS + channelOffset];
                 if( y == startRow && x == 0 ){
-                    output[y*width*3 + x*3 + channelOffset] = (b_byte ^ input[y*width*3 + x*3 + channelOffset] ^ sd ) - b_byte ;
+                    output[y*width*NUM_CHANNELS + x*NUM_CHANNELS + channelOffset] = (b_byte ^ input[y*width*NUM_CHANNELS + x*NUM_CHANNELS + channelOffset] ^ sd ) - b_byte ;
                 } else{
-                    output[y*width*3 +x*3 + channelOffset] = (b_byte ^  input[y*width*3 + x*3 + channelOffset] ^  input[ y*width*3 + (x - 1)*3 + channelOffset ] ) - b_byte ;
+                    output[y*width*NUM_CHANNELS +x*NUM_CHANNELS + channelOffset] = (b_byte ^  input[y*width*NUM_CHANNELS + x*NUM_CHANNELS + channelOffset] ^  input[ y*width*NUM_CHANNELS + (x - 1)*NUM_CHANNELS + channelOffset ] ) - b_byte ;
                     //output[y*width+x] =255;
                 } 
             }
@@ -35,7 +37,7 @@ __device__ void diffusionSeq(int startRow, int endRow, int width, unsigned char 
     }
 }
 
-__global__ void diffusionKernel(const unsigned char *input, unsigned char *output, const unsigned char *byte_stream, int width, int height, int performInverseDiffusion) {
+__global__ void diffusionKernel(const unsigned char *input, unsigned char *output, const unsigned char *byte_stream, int width, int height, int num_subframes, int performInverseDiffusion) {
 
     // will worry about parametrizing better as soon as complete encrption process for the specific case of the 768x768 greyscale frame
 
@@ -44,8 +46,7 @@ __global__ void diffusionKernel(const unsigned char *input, unsigned char *outpu
 
     int blockId = blockIdx.x ;
     int tid = threadIdx.x;
-    int num_blocks_grey = 128 ; // there are 128 blocks
-    int channelOffset = blockId/ 128 ;
+    int channelOffset = blockId/ num_subframes ;
 
     //channelOffset = 0 ; //focusing on the blue channel for now just for debugging purposes ....
 
@@ -53,13 +54,13 @@ __global__ void diffusionKernel(const unsigned char *input, unsigned char *outpu
 
     if (tid == 0 ){
 
-        int startRow =   (blockId % 128) * (width/num_blocks_grey) ;  //startRow of the subframe
-        int endRow = startRow + (width/num_blocks_grey) - 1 ;
+        int startRow =   (blockId % 128) * (width/num_subframes) ;  //startRow of the subframe
+        int endRow = startRow + (width/num_subframes) - 1 ;
         //printf ( "startRow of blockId %d: %d \n", blockId, startRow) ;
 
         // the diffusion seed of a specific subframe i is the last pixel value of the subframe( (i+1) mod n ) (n being number of assitant threads in the article (n being nummber of blocs in my case ))
-        int sd_row_coordinate_part1 = ( ( ( blockId + 1) % num_blocks_grey )*(width/num_blocks_grey) ) + width/num_blocks_grey - 1  ; //this is the y_coordinate of the selected pixel if we imagine the frame values in 2d space!!! if want to get the position in the linearized frame we must multiply by the width 
-        unsigned char sd = input[ (sd_row_coordinate_part1*width*3) + (width - 1)*3 + channelOffset  ]; 
+        int sd_row_coordinate_part1 = ( ( ( blockId + 1) % num_subframes )*(width/num_subframes) ) + width/num_subframes - 1  ; //this is the y_coordinate of the selected pixel if we imagine the frame values in 2d space!!! if want to get the position in the linearized frame we must multiply by the width 
+        unsigned char sd = input[ (sd_row_coordinate_part1*width*NUM_CHANNELS) + (width - 1)*NUM_CHANNELS + channelOffset  ]; 
         
         
         diffusionSeq(startRow, endRow , width, sd, input, byte_stream, output , channelOffset, performInverseDiffusion  ); //this is the sequential version based oon chebishev on the paper.. unfutunatly it is nonParallelizable
@@ -103,20 +104,21 @@ __global__ void diffusionKernel(const unsigned char *input, unsigned char *outpu
     */
 }
 
-void diffusionOpWrapper( unsigned char *input, unsigned char *output, unsigned char *byteStreamFinal, int width, int height, int performInverseDiffusion) {
+void diffusionOpWrapper( unsigned char *input, unsigned char *output, unsigned char *byteStreamFinal, int width, int height, int subframe_height, int performInverseDiffusion) {
 
     const int total_pixels = width * height ;
+    const int num_subframes = height / subframe_height ;
 
     unsigned char *d_input ;
     unsigned char *d_output ;
     unsigned char *d_byteStream ;  // space which contains all of the byte streams that have to be applied to all of the subframes...
 
-    cudaMalloc(&d_input, total_pixels * 3 * sizeof( unsigned char ) ) ;
-    cudaMalloc(&d_output, total_pixels * 3 * sizeof( unsigned char ) ) ;
-    cudaMalloc(&d_byteStream, total_pixels * 3 * sizeof( unsigned char ) ) ;
+    cudaMalloc(&d_input, total_pixels * NUM_CHANNELS * sizeof( unsigned char ) ) ;
+    cudaMalloc(&d_output, total_pixels * NUM_CHANNELS * sizeof( unsigned char ) ) ;
+    cudaMalloc(&d_byteStream, total_pixels * NUM_CHANNELS * sizeof( unsigned char ) ) ;
 
-    cudaMemcpy(d_input, input, total_pixels * 3 * sizeof( unsigned char ), cudaMemcpyHostToDevice) ;
-    cudaMemcpy(d_byteStream, byteStreamFinal, total_pixels * 3 * sizeof(unsigned char), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_input, input, total_pixels * NUM_CHANNELS * sizeof( unsigned char ), cudaMemcpyHostToDevice) ;
+    cudaMemcpy(d_byteStream, byteStreamFinal, total_pixels * NUM_CHANNELS * sizeof(unsigned char), cudaMemcpyHostToDevice);
 
     //printf(".......");
 
@@ -124,14 +126,14 @@ void diffusionOpWrapper( unsigned char *input, unsigned char *output, unsigned c
     //will have to modify when optimizing.... either try to find another algorithm for diffusion different from the paper online which is parallelizable....
     //..or stick to this and just try to obtain the correct configurations of blocks which do make obtain the best performance... can see that while profiling i believe
 
-    dim3 blocksPerGrid(128*3);
+    dim3 blocksPerGrid(num_subframes*NUM_CHANNELS);
     //dim3 threadsPerBlock(154,6) ; // maximum number of threads per block that can be allocated. // same way as confusion
     dim3 threadsPerBlock(1);
 
-    diffusionKernel<<< blocksPerGrid, threadsPerBlock >>> ( d_input, d_output, d_byteStream, width, height, performInverseDiffusion );
+    diffusionKernel<<< blocksPerGrid, threadsPerBlock >>> ( d_input, d_output, d_byteStream, width, height, num_subframes, performInverseDiffusion );
     cudaDeviceSynchronize();
 
-    cudaMemcpy(output, d_output, total_pixels * 3 * sizeof( unsigned char), cudaMemcpyDeviceToHost);
+    cudaMemcpy(output, d_output, total_pixels * NUM_CHANNELS * sizeof( unsigned char), cudaMemcpyDeviceToHost);
 
     cudaFree(d_input);
     cudaFree(d_byteStream);

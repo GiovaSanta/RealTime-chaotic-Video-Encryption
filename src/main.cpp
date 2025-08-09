@@ -7,7 +7,7 @@
 #include "../include/confusion_kernel.hpp"
 #include "../include/diffusion_kernel.hpp"
 
-#define ROUNDS 1
+#define ROUNDS 5
 #define NUM_CHANNELS 3 // number RGB channels
 
 int main () {
@@ -42,7 +42,7 @@ int main () {
 
     printf ("width : %d, height: %d \n", width, height) ;
 
-    double globalKey = 0.123456 ; //used for PRBGmain initialization. is a double value (0,0.5)
+    double globalKey = 0.223456 ; //used for PRBGmain initialization. is a double value (0,0.5)
     double p = 0.3; //control parameter for the PRBGmain . is a value in (0,0.5)
 
     int numKeys =numSubFrames * NUM_CHANNELS ;  /* each iteration of the PRBG main is a resultant input seed...
@@ -89,11 +89,11 @@ for( int i = 0; i< ROUNDS; i ++){
     
 //DIFFUSION
     
-    /*diffusionOpWrapper( current.data, buffer.data(), byteStreamFinal.data(), width, height, performInverseDiffusion ) ;
+    diffusionOpWrapper( current.data, buffer.data(), byteStreamFinal.data(), width, height, subFrameHeight, performInverseDiffusion ) ;
     current = cv::Mat(height, width, CV_8UC3, buffer.data()).clone();
 
     std::string filenameDiffusion = "testResults/afterDiffusion" + std::to_string(i) +".png" ;
-    cv::imwrite(filenameDiffusion, current ); */
+    cv::imwrite(filenameDiffusion, current ); 
 
 }
 
@@ -105,11 +105,11 @@ for( int i = ROUNDS-1 ; i >=0; i --){
 //INVERSE OF DIFFUSION
     //here performing the inverse of the diffusion to see if i am able to obtain the original frame back implying diffusion operations make sense.
     
-    /*diffusionOpWrapper( current.data, buffer.data(), byteStreamFinal.data(), width, height, performInverseDiffusion ) ;
+    diffusionOpWrapper( current.data, buffer.data(), byteStreamFinal.data(), width, height, subFrameHeight, performInverseDiffusion ) ;
     current = cv::Mat(height, width, CV_8UC3, buffer.data()).clone() ;
     
     std::string filenameInvDiffusion = "testResults/afterInvDiffusion" + std::to_string(i) + ".png" ;
-    cv::imwrite( filenameInvDiffusion, current) ;*/    
+    cv::imwrite( filenameInvDiffusion, current) ;    
 
 //INVERSE OF CONFUSION 
 

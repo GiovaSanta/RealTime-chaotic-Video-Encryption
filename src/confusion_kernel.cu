@@ -26,10 +26,14 @@ __global__ void inverseConfusionKernel ( const unsigned char *input, unsigned ch
         int x = x_base + i ;
         if ( x < width ){  // maybe can remove this if with padding in th future ... or other strategies... i mean this
             
-            double theta = 2* M_PI * (double)y / ((double) width );
-            double sinVal = sinf( theta ) ; //use sin function for double precision, sinf for single precision
+            double theta = 2* (double)y / ((double) width );
+            double sinVal = sinpi( theta ) ; //use sin function for double precision, sinf for single precision
             int y1 = ((static_cast<int>(y - x + sc * sinVal) % width) + width) % width  ;  // doing this because % operator in cuda cant do right operation for negative operands
             int x1 = ((static_cast<int>( x - sc * sinVal) % width ) + width ) % width  ;
+
+            if(x == 1 && y== 384){
+                printf("x1:%d, y1:%d\n", x1, y1);
+            }
 
             //printf("pixel in location (%d,%d), now goes to location (%d,) \n", x,y, x1 ) ;
             output[y1 * width*NUM_CHANNELS + x1*NUM_CHANNELS + channelOffset  ] = input[y * width*NUM_CHANNELS + x*NUM_CHANNELS + channelOffset ] ;
@@ -64,16 +68,25 @@ __global__ void confusionKernel( const unsigned char *input, unsigned char * out
     for(int i = 0; i< pixelsPerThread ; i++ ){   // since in this release0 of the encryption flow each thread handles more then one pixel,this for loop right here is needed.
         int x = x_base + i  ;  // assuming channelOffset to be 0 rignt now
         if ( x < width ){  // maybe can remove this if with padding in th future ... or other strategies... i mean this
+            
+        //    if(x == 383 && y== 1){
+
             int y1 = (y + x ) % (width) ;
-            double theta = 2* M_PI * (double)y1 / ((double) width );
-            double sinVal = sinf( theta ) ; //use sin function for double precision, sinf for single precision
+            double theta = 2 * (double)y1 / ((double) width );
+            double sinVal = sinpi( theta ) ; //use sin function for double precision, sinf for single precision
+            //printf("sinval is: %.15f\n", sinVal);
             double op = x + (((double)sc) * sinVal);
             int x1 = ( ( (static_cast<int>( op ) % (width) ) + (width) ) % (width) ) ; // sequence of % is done because of cuda inability of "%" for negative operands
+
+            printf("x1:%d, y1:%d\n", x1, y1);
+
+            output[ NUM_CHANNELS*y1 * width + NUM_CHANNELS* x1 + channelOffset ] = input[y * width*NUM_CHANNELS+ x* NUM_CHANNELS + channelOffset ] ;
+
+          //  }
 
             //printf("pixel in location (%d,%d), now goes to location (%d,%d) \n", x,y, x1,y1 ) ;
             //output[y1 * width + x1 ] = input[y1 * width + x1  ] ; 
             
-            output[ NUM_CHANNELS*y1 * width + NUM_CHANNELS* x1 + channelOffset ] = input[y * width*NUM_CHANNELS+ x* NUM_CHANNELS + channelOffset ] ;
         }
     }
 }
