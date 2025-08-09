@@ -3,7 +3,7 @@
 #include <iostream>
 #include "../include/encrypt_kernel.hpp"
 
-#define VALUESGENERATEDPRBGA 768 
+//#define VALUESGENERATEDPRBGA 768 
 
 //will need to redo this one function do it well following how the prbg for the main thread was implemented
 __device__ void prbga_plcm(double xi, double p, double *output, int numValuesGeneratedPRBGA ){
@@ -37,8 +37,13 @@ __global__ void prbgaKernel( unsigned char *finalByteStream, unsigned char *outp
     int blockId = blockIdx.x ;
     int tid = threadIdx.x;
 
-    __shared__ double PRBGA_values1[VALUESGENERATEDPRBGA];
-    __shared__ double PRBGA_values2[VALUESGENERATEDPRBGA];
+    //__shared__ double PRBGA_values1[VALUESGENERATEDPRBGA];
+    //__shared__ double PRBGA_values2[VALUESGENERATEDPRBGA];
+
+    extern __shared__ double shared_mem[]; // the shared memory that is getting used per block reserved after callling the kernel will actually get destroyed automatically after the block is done.. so no need to free
+
+    double *PRBGA_values1 = shared_mem;
+    double *PRBGA_values2 = shared_mem + numValuesGeneratedPRBGA;
 
     //only one thread per block runs the PRBGa... for now
     if(tid == 0) {
@@ -113,9 +118,11 @@ void PRBGAandByteStreamGenWrapper(const std::vector<double>& keysAndControlPs, s
 
     //launch the kernel
     dim3 blocks(numKeys);
-    dim3 threads(PRBGAiterations); //768 the threads per block are 768
+    dim3 threads(PRBGAiterations); //the width is the threads per block that are allocated.
 
-    prbgaKernel<<<blocks, threads>>>( d_byteStreamFinal, d_values4ByteStream_1, d_values4ByteStream_2, d_keysAndControlPs, PRBGAiterations ) ;
+    size_t sharedMemPerBlock = 2 * PRBGAiterations * sizeof(double);
+
+    prbgaKernel<<<blocks, threads, sharedMemPerBlock>>>( d_byteStreamFinal, d_values4ByteStream_1, d_values4ByteStream_2, d_keysAndControlPs, PRBGAiterations ) ;
     cudaDeviceSynchronize();
    
     //copy results back  
