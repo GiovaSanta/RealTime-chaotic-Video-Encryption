@@ -62,7 +62,6 @@ __global__ void diffusionKernel(const unsigned char *input, unsigned char *outpu
         int sd_row_coordinate_part1 = ( ( ( blockId + 1) % num_subframes )*(width/num_subframes) ) + width/num_subframes - 1  ; //this is the y_coordinate of the selected pixel if we imagine the frame values in 2d space!!! if want to get the position in the linearized frame we must multiply by the width 
         unsigned char sd = input[ (sd_row_coordinate_part1*width*NUM_CHANNELS) + (width - 1)*NUM_CHANNELS + channelOffset  ]; 
         
-        
         diffusionSeq(startRow, endRow , width, sd, input, byte_stream, output , channelOffset, performInverseDiffusion  ); //this is the sequential version based oon chebishev on the paper.. unfutunatly it is nonParallelizable
     }
 
@@ -113,15 +112,16 @@ void diffusionOpWrapper( unsigned char *input, unsigned char *output, unsigned c
     unsigned char *d_output ;
     unsigned char *d_byteStream ;  // space which contains all of the byte streams that have to be applied to all of the subframes...
 
-    printf("total_pixels: %d\n", total_pixels) ;
-    printf("num_subframes: %d\n", num_subframes) ;
+    //printf("total_pixels: %d\n", total_pixels) ;
+    //printf("num_subframes: %d\n", num_subframes) ;
 
     cudaMalloc(&d_input, total_pixels * NUM_CHANNELS * sizeof( unsigned char ) ) ;
     cudaMalloc(&d_output, total_pixels * NUM_CHANNELS * sizeof( unsigned char ) ) ;
     cudaMalloc(&d_byteStream, total_pixels * NUM_CHANNELS * sizeof( unsigned char ) ) ;
 
     cudaMemcpy(d_input, input, total_pixels * NUM_CHANNELS * sizeof( unsigned char ), cudaMemcpyHostToDevice) ;
-    cudaMemcpy(d_byteStream, byteStreamFinal, total_pixels * NUM_CHANNELS * sizeof(unsigned char), cudaMemcpyHostToDevice);
+    
+    cudaMemcpy(d_byteStream, byteStreamFinal, total_pixels * NUM_CHANNELS * sizeof( unsigned char), cudaMemcpyHostToDevice);
 
     //printf(".......");
 

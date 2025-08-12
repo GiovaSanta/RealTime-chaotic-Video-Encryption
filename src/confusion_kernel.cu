@@ -89,12 +89,12 @@ void confusionOpWrapper( unsigned char *input, unsigned char *output, int width 
     int dimThreadsYdir = subframe_height ;
     int dimThreadsXdir =  1024/dimThreadsYdir ; // 1024 is the total number of threads that can be assigned per block on the jetson nano. dimThreadsXdir takes truncated value of such calculation
 
-    printf("numThreads allocated in xDir : %d \n", dimThreadsXdir);
-    printf("numThreads allocated in yDir : %d \n", dimThreadsYdir) ;
+    //printf("numThreads allocated in xDir : %d \n", dimThreadsXdir);
+    //printf("numThreads allocated in yDir : %d \n", dimThreadsYdir) ;
 
     int pixelsPerThread = ceilf( ((float)(subframe_height * width))/((float)(dimThreadsXdir*dimThreadsYdir) ) );// since in this current release the subframes will most likely contain more then 1024 pixels 
 
-    printf("pixelsPer thread : %d\n", pixelsPerThread) ;
+    //printf("pixelsPer thread : %d\n", pixelsPerThread) ;
     cudaMalloc(&d_input, total_pixels * NUM_CHANNELS * sizeof( unsigned char ) ) ;
 
     cudaMalloc(&d_output, total_pixels * NUM_CHANNELS * sizeof( unsigned char ) ) ;
@@ -104,12 +104,29 @@ void confusionOpWrapper( unsigned char *input, unsigned char *output, int width 
     dim3 blocksPerGrid(num_subframes * NUM_CHANNELS ); 
     dim3 threadsPerBlock(dimThreadsXdir,dimThreadsYdir) ; // maximum number of threads per block that can be allocated.
 
+    //cudaEvent_t start, stop ;
+    //cudaEventCreate(&start) ;
+    //cudaEventCreate(&stop ) ;
+
     if(performInverseConfusion == 0){
-        confusionKernel<<< blocksPerGrid, threadsPerBlock >>> ( d_input, d_output, width, subframe_height, pixelsPerThread, sc); 
+        //cudaEventRecord(start);
+        confusionKernel<<< blocksPerGrid, threadsPerBlock >>> ( d_input, d_output, width, subframe_height, pixelsPerThread, sc);
+        
+        //cudaEventRecord(stop) ;
+        //cudaEventSynchronize(stop) ;
+
+        //float milliseconds = 0;
+        //cudaEventElapsedTime(&milliseconds, start, stop);
+
+        //std::cout << "Kernel execution time: " << milliseconds << "ms\n" ;
+        
     } else {
         inverseConfusionKernel <<<  blocksPerGrid, threadsPerBlock >>> (d_input, d_output, width, subframe_height, pixelsPerThread, sc) ;// used to check if indeed we get the starting image back 
     }
-    cudaDeviceSynchronize();
+
+    
+
+    cudaDeviceSynchronize() ;
 
     cudaMemcpy(output, d_output, total_pixels * NUM_CHANNELS * sizeof(unsigned char), cudaMemcpyDeviceToHost);
 

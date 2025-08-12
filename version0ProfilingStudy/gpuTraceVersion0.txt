@@ -1,0 +1,51 @@
+==10217== NVPROF is profiling process 10217, command: ./encryptApp
+==10217== Warning: Unified Memory Profiling is not supported on the underlying platform. System requirements for unified memory can be found at: http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#um-requirements
+==10217== Profiling application: ./encryptApp
+==10217== Profiling result:
+   Start  Duration            Grid Size      Block Size     Regs*    SSMem*    DSMem*      Size  Throughput  SrcMemType  DstMemType           Device   Context    Stream  Name
+881.73ms  14.793us                    -               -         -         -         -  7.5000KB  495.11MB/s    Pageable      Device  NVIDIA Tegra X1         1         7  [CUDA memcpy HtoD]
+892.84ms  635.97ms            (480 1 1)       (960 1 1)        32        0B  15.000KB         -           -           -           -  NVIDIA Tegra X1         1         7  prbgaKernel(unsigned char*, unsigned char*, unsigned char*, double const *, int) [116]
+1.53928s  2.5407ms                    -               -         -         -         -  2.6367MB  1.0135GB/s      Device    Pageable  NVIDIA Tegra X1         1         7  [CUDA memcpy DtoH]
+1.54345s  945.45us                    -               -         -         -         -  2.6367MB  2.7235GB/s      Device    Pageable  NVIDIA Tegra X1         1         7  [CUDA memcpy DtoH]
+1.54536s  898.05us                    -               -         -         -         -  2.6367MB  2.8672GB/s      Device    Pageable  NVIDIA Tegra X1         1         7  [CUDA memcpy DtoH]
+1.56042s  1.2552ms                    -               -         -         -         -  2.6367MB  2.0515GB/s    Pageable      Device  NVIDIA Tegra X1         1         7  [CUDA memcpy HtoD]
+1.56191s  27.422ms            (480 1 1)       (170 6 1)        30        0B        0B         -           -           -           -  NVIDIA Tegra X1         1         7  confusionKernel(unsigned char const *, unsigned char*, int, int, int, unsigned long) [128]
+1.59050s  877.00us                    -               -         -         -         -  2.6367MB  2.9360GB/s      Device    Pageable  NVIDIA Tegra X1         1         7  [CUDA memcpy DtoH]
+1.75290s  1.1320ms                    -               -         -         -         -  2.6367MB  2.2747GB/s    Pageable      Device  NVIDIA Tegra X1         1         7  [CUDA memcpy HtoD]
+1.75462s  1.2074ms                    -               -         -         -         -  2.6367MB  2.1326GB/s    Pageable      Device  NVIDIA Tegra X1         1         7  [CUDA memcpy HtoD]
+1.75600s  40.209ms            (480 1 1)         (1 1 1)        26        0B        0B         -           -           -           -  NVIDIA Tegra X1         1         7  diffusionKernel(unsigned char const *, unsigned char*, unsigned char const *, int, int, int, int) [138]
+1.79648s  890.49us                    -               -         -         -         -  2.6367MB  2.8916GB/s      Device    Pageable  NVIDIA Tegra X1         1         7  [CUDA memcpy DtoH]
+1.95091s  745.53us                    -               -         -         -         -  2.6367MB  3.4538GB/s    Pageable      Device  NVIDIA Tegra X1         1         7  [CUDA memcpy HtoD]
+1.95179s  24.302ms            (480 1 1)       (170 6 1)        30        0B        0B         -           -           -           -  NVIDIA Tegra X1         1         7  confusionKernel(unsigned char const *, unsigned char*, int, int, int, unsigned long) [147]
+1.97644s  832.47us                    -               -         -         -         -  2.6367MB  3.0931GB/s      Device    Pageable  NVIDIA Tegra X1         1         7  [CUDA memcpy DtoH]
+2.09227s  734.18us                    -               -         -         -         -  2.6367MB  3.5072GB/s    Pageable      Device  NVIDIA Tegra X1         1         7  [CUDA memcpy HtoD]
+2.09350s  921.49us                    -               -         -         -         -  2.6367MB  2.7943GB/s    Pageable      Device  NVIDIA Tegra X1         1         7  [CUDA memcpy HtoD]
+2.09454s  40.074ms            (480 1 1)         (1 1 1)        26        0B        0B         -           -           -           -  NVIDIA Tegra X1         1         7  diffusionKernel(unsigned char const *, unsigned char*, unsigned char const *, int, int, int, int) [157]
+2.13490s  828.30us                    -               -         -         -         -  2.6367MB  3.1087GB/s      Device    Pageable  NVIDIA Tegra X1         1         7  [CUDA memcpy DtoH]
+2.25489s  1.0562ms                    -               -         -         -         -  2.6367MB  2.4379GB/s    Pageable      Device  NVIDIA Tegra X1         1         7  [CUDA memcpy HtoD]
+2.25612s  24.285ms            (480 1 1)       (170 6 1)        30        0B        0B         -           -           -           -  NVIDIA Tegra X1         1         7  confusionKernel(unsigned char const *, unsigned char*, int, int, int, unsigned long) [166]
+2.28073s  950.71us                    -               -         -         -         -  2.6367MB  2.7084GB/s      Device    Pageable  NVIDIA Tegra X1         1         7  [CUDA memcpy DtoH]
+2.40566s  853.20us                    -               -         -         -         -  2.6367MB  3.0180GB/s    Pageable      Device  NVIDIA Tegra X1         1         7  [CUDA memcpy HtoD]
+2.40696s  969.67us                    -               -         -         -         -  2.6367MB  2.6555GB/s    Pageable      Device  NVIDIA Tegra X1         1         7  [CUDA memcpy HtoD]
+2.40810s  40.043ms            (480 1 1)         (1 1 1)        26        0B        0B         -           -           -           -  NVIDIA Tegra X1         1         7  diffusionKernel(unsigned char const *, unsigned char*, unsigned char const *, int, int, int, int) [176]
+2.44843s  1.2168ms                    -               -         -         -         -  2.6367MB  2.1161GB/s      Device    Pageable  NVIDIA Tegra X1         1         7  [CUDA memcpy DtoH]
+2.56429s  845.33us                    -               -         -         -         -  2.6367MB  3.0460GB/s    Pageable      Device  NVIDIA Tegra X1         1         7  [CUDA memcpy HtoD]
+2.56527s  24.300ms            (480 1 1)       (170 6 1)        30        0B        0B         -           -           -           -  NVIDIA Tegra X1         1         7  confusionKernel(unsigned char const *, unsigned char*, int, int, int, unsigned long) [185]
+2.58980s  891.22us                    -               -         -         -         -  2.6367MB  2.8892GB/s      Device    Pageable  NVIDIA Tegra X1         1         7  [CUDA memcpy DtoH]
+2.70961s  765.17us                    -               -         -         -         -  2.6367MB  3.3652GB/s    Pageable      Device  NVIDIA Tegra X1         1         7  [CUDA memcpy HtoD]
+2.71082s  901.85us                    -               -         -         -         -  2.6367MB  2.8552GB/s    Pageable      Device  NVIDIA Tegra X1         1         7  [CUDA memcpy HtoD]
+2.71185s  40.093ms            (480 1 1)         (1 1 1)        26        0B        0B         -           -           -           -  NVIDIA Tegra X1         1         7  diffusionKernel(unsigned char const *, unsigned char*, unsigned char const *, int, int, int, int) [195]
+2.75364s  885.34us                    -               -         -         -         -  2.6367MB  2.9084GB/s      Device    Pageable  NVIDIA Tegra X1         1         7  [CUDA memcpy DtoH]
+2.87605s  841.84us                    -               -         -         -         -  2.6367MB  3.0587GB/s    Pageable      Device  NVIDIA Tegra X1         1         7  [CUDA memcpy HtoD]
+2.87704s  24.270ms            (480 1 1)       (170 6 1)        30        0B        0B         -           -           -           -  NVIDIA Tegra X1         1         7  confusionKernel(unsigned char const *, unsigned char*, int, int, int, unsigned long) [204]
+2.90159s  846.84us                    -               -         -         -         -  2.6367MB  3.0406GB/s      Device    Pageable  NVIDIA Tegra X1         1         7  [CUDA memcpy DtoH]
+3.02628s  866.17us                    -               -         -         -         -  2.6367MB  2.9728GB/s    Pageable      Device  NVIDIA Tegra X1         1         7  [CUDA memcpy HtoD]
+3.02762s  946.64us                    -               -         -         -         -  2.6367MB  2.7201GB/s    Pageable      Device  NVIDIA Tegra X1         1         7  [CUDA memcpy HtoD]
+3.02870s  40.209ms            (480 1 1)         (1 1 1)        26        0B        0B         -           -           -           -  NVIDIA Tegra X1         1         7  diffusionKernel(unsigned char const *, unsigned char*, unsigned char const *, int, int, int, int) [214]
+3.06921s  863.93us                    -               -         -         -         -  2.6367MB  2.9805GB/s      Device    Pageable  NVIDIA Tegra X1         1         7  [CUDA memcpy DtoH]
+
+Regs: Number of registers used per CUDA thread. This number includes registers used internally by the CUDA driver and/or tools and can be more than what the compiler shows.
+SSMem: Static shared memory allocated per CUDA block.
+DSMem: Dynamic shared memory allocated per CUDA block.
+SrcMemType: The type of source memory accessed by memory operation/copy
+DstMemType: The type of destination memory accessed by memory operation/copy

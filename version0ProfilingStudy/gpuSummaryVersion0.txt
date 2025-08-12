@@ -1,0 +1,10 @@
+==12807== NVPROF is profiling process 12807, command: ./encryptApp
+==12807== Warning: Unified Memory Profiling is not supported on the underlying platform. System requirements for unified memory can be found at: http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#um-requirements
+==12807== Profiling application: ./encryptApp
+==12807== Profiling result:
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+ GPU activities:   57.87%  551.81ms         1  551.81ms  551.81ms  551.81ms  prbgaKernel(unsigned char*, unsigned char*, unsigned char*, double const *, int)
+                   24.55%  234.08ms         5  46.816ms  39.606ms  54.158ms  diffusionKernel(unsigned char const *, unsigned char*, unsigned char const *, int, int, int, int)
+                   14.72%  140.39ms         5  28.078ms  24.296ms  31.876ms  confusionKernel(unsigned char const *, unsigned char*, int, int, int, unsigned long)
+                    1.60%  15.233ms        16  952.06us  14.740us  1.2594ms  [CUDA memcpy HtoD]
+                    1.26%  11.968ms        13  920.58us  742.83us  1.4527ms  [CUDA memcpy DtoH]
