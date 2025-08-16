@@ -10,7 +10,7 @@ __global__ void inverseConfusionKernel ( const unsigned char *input, unsigned ch
     int tid_x = threadIdx.x ; //0 to 153
     int tid_y = threadIdx.y ; // 0 to 5
     
-    int num_blocks_grey = (  gridDim.x ) / NUM_CHANNELS ; // there are 128 blocks
+    int num_blocks_grey = (  gridDim.x ); // / NUM_CHANNELS ; // there are 128 blocks
 
     int channelOffset = blockIdx.x / num_blocks_grey ;
 
@@ -32,7 +32,9 @@ __global__ void inverseConfusionKernel ( const unsigned char *input, unsigned ch
             int x1 = ((static_cast<int>( x - sc * sinVal) % width ) + width ) % width  ;
 
             //printf("pixel in location (%d,%d), now goes to location (%d,) \n", x,y, x1 ) ;
-            output[y1 * width*NUM_CHANNELS + x1*NUM_CHANNELS + channelOffset  ] = input[y * width*NUM_CHANNELS + x*NUM_CHANNELS + channelOffset ] ;
+            for(int c = 0; c<NUM_CHANNELS; c++){
+                output[y1 * width*NUM_CHANNELS + x1*NUM_CHANNELS + c  ] = input[y * width*NUM_CHANNELS + x*NUM_CHANNELS + c ] ;
+            }
             //output[y1 * width + x1] = 255;
         }
     }
@@ -40,10 +42,13 @@ __global__ void inverseConfusionKernel ( const unsigned char *input, unsigned ch
 
 __global__ void confusionKernel( const unsigned char *input, unsigned char * output, int width, int subFrameHeight, int pixelsPerThread, uint64_t sc){
 
+
+    extern __shared__ unsigned char tile_in[] ;
+
     int tid_x = threadIdx.x ; //0 to 153
     int tid_y = threadIdx.y ; // 0 to 5
     
-    int num_subframes =(  gridDim.x ) / NUM_CHANNELS ; // there are 128 blocks for the greyscale version
+    int num_subframes =(  gridDim.x ); // / NUM_CHANNELS ; // there are 128 blocks for the greyscale version
 
     int channelOffset = blockIdx.x / num_subframes ;  
     
@@ -60,17 +65,45 @@ __global__ void confusionKernel( const unsigned char *input, unsigned char * out
     //output[y * width*3 + x_base*3 + channelOffset + 2 ] = input[y * width*3 + x_base*3 + channelOffset + 2] ; //used for DEBUG.... if you launch just 128 blocks, you will see just the blue component of the base pixel of each thread (each thread manages 5 pixels stemmming from a base pixel )
     // if were to run it with 128 * 2 blocks, you will see the blue and green components of each base pixels of all the subframes...
 
+    //COALESCED READ INTO SHARED MEM
+    /*for ( int i = 0; i < pixelsPerThread; i ++ ){
+        int x = x_base + i;
+        if ( x < width ){
+            for ( int c = 0; c < NUM_CHANNELS; c ++){
+                tile_in[( local_y * width + x)* NUM_CHANNELS + c] = input[(y*width + x)*NUM_CHANNELS + c] ;
+            }
+        }
+    }       
+    __syncthreads();
+*/
+
+/*    for( int i = 0; i < pixelsPerThread; i++){
+        int x = x_base + i;
+        if(x <width){
+            for(int c = 0; c < NUM_CHANNELS; c++ ){
+                output[NUM_CHANNELS * ( y * width + x) + c ] = tile_in[NUM_CHANNELS * (local_y*width +x) + c ];
+            }
+        }
+    }
+
+    //rintf(".");
+    __syncthreads();
+*/
+    //CONFUSION IN THE SHSARED MEMORY but WITH SCATTERED WRITES to GLOBAL
+
     for(int i = 0; i< pixelsPerThread ; i++ ){   // since in this release0 of the encryption flow each thread handles more then one pixel,this for loop right here is needed.
-        int x = x_base + i  ;  // assuming channelOffset to be 0 rignt now
+        int x = x_base + i ;  // assuming channelOffset to be 0 rignt now
         if ( x < width ){  // maybe can remove this if with padding in th future ... or other strategies... i mean this
             
-            int y1 = (y + x ) % (width) ;
-            double theta = 2 * (double)y1 / ((double) width );
-            double sinVal = sinpi( theta ) ; //use sin function for double precision, sinf for single precision
-            double op = x + (((double)sc) * sinVal);
-            int x1 = ( ( (static_cast<int>( op ) % (width) ) + (width) ) % (width) ) ; // sequence of % is done because of cuda inability of "%" for negative operands
-            output[ NUM_CHANNELS*y1 * width + NUM_CHANNELS* x1 + channelOffset ] = input[y * width*NUM_CHANNELS+ x* NUM_CHANNELS + channelOffset ] ;
-
+            int y1 = (y + x) % width;
+            double theta = 2.0 * (double)y1 / ( (double) width ) ;
+            double sinVal = sinpi(theta);
+            double op = (double)x + ( ( ( double ) sc) * sinVal ) ;
+            int x1 = ( ( (static_cast<int>( op ) % (width) ) + (width) ) % (width) ) ; 
+            for(int c = 0; c < NUM_CHANNELS; c ++){
+                output[NUM_CHANNELS*( y1* width + x1 ) + c ] = input[ NUM_CHANNELS * ( y * width +x) + c ];
+            }
+            
             //printf("pixel in location (%d,%d), now goes to location (%d,%d) \n", x,y, x1,y1 ) ;
             //output[y1 * width + x1 ] = input[y1 * width + x1  ] ; 
         }
@@ -101,8 +134,10 @@ void confusionOpWrapper( unsigned char *input, unsigned char *output, int width 
 
     cudaMemcpy(d_input, input, total_pixels * NUM_CHANNELS * sizeof(unsigned char), cudaMemcpyHostToDevice) ;
 
-    dim3 blocksPerGrid(num_subframes * NUM_CHANNELS ); 
-    dim3 threadsPerBlock(dimThreadsXdir,dimThreadsYdir) ; // maximum number of threads per block that can be allocated.
+    dim3 blocksPerGrid(num_subframes); // * NUM_CHANNELS ) ; // * NUM_CHANNELS
+    dim3 threadsPerBlock(dimThreadsXdir, dimThreadsYdir ) ; // maximum number of threads per block that can be allocated.
+
+    //size_t sharedMemTileSize = width * subframe_height * NUM_CHANNELS * sizeof( unsigned char ) ;
 
     //cudaEvent_t start, stop ;
     //cudaEventCreate(&start) ;
@@ -123,8 +158,6 @@ void confusionOpWrapper( unsigned char *input, unsigned char *output, int width 
     } else {
         inverseConfusionKernel <<<  blocksPerGrid, threadsPerBlock >>> (d_input, d_output, width, subframe_height, pixelsPerThread, sc) ;// used to check if indeed we get the starting image back 
     }
-
-    
 
     cudaDeviceSynchronize() ;
 

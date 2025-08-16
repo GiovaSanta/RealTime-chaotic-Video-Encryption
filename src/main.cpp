@@ -23,6 +23,13 @@ int main () {
     int maxGridDimZ;
     cudaDeviceGetAttribute(&maxGridDimZ, cudaDevAttrMaxGridDimZ, device);
 
+    //int device = 0;  // use device 0 (default)
+    cudaDeviceProp prop;
+    cudaError_t status = cudaGetDeviceProperties(&prop, device);
+
+    printf("GPU Name: %s\n", prop.name);
+    printf("Number of Streaming Multiprocessors: %d\n", prop.multiProcessorCount);
+
     std::cout << "Max threads per block: " << maxThreadsPerBlock << std::endl;
     std::cout << "Max grid dimensions: (" << maxGridDimX << ", "<< maxGridDimY << ", " << maxGridDimZ << ")" << std::endl;
 
@@ -102,21 +109,22 @@ performInverseConfusion = 1; // doing the inverse of the confusiion to see if we
 for( int i = ROUNDS-1 ; i >=0; i --) {
 
 //INVERSE OF DIFFUSION
+    
     //here performing the inverse of the diffusion to see if i am able to obtain the original frame back implying diffusion operations make sense.
     
-    //diffusionOpWrapper( current.data, buffer.data(), byteStreamFinal.data(), width, height, subFrameHeight, performInverseDiffusion ) ;
-    //current = cv::Mat(height, width, CV_8UC3, buffer.data()).clone() ;
+    diffusionOpWrapper( current.data, buffer.data(), byteStreamFinal.data(), width, height, subFrameHeight, performInverseDiffusion ) ;
+    current = cv::Mat(height, width, CV_8UC3, buffer.data()).clone() ;
     
-    //std::string filenameInvDiffusion = "testResults/afterInvDiffusion" + std::to_string(i) + ".png" ;
-    //cv::imwrite( filenameInvDiffusion, current) ;    
+    std::string filenameInvDiffusion = "testResults/afterInvDiffusion" + std::to_string(i) + ".png" ;
+    cv::imwrite( filenameInvDiffusion, current) ;    
 
 //INVERSE OF CONFUSION 
 
-    //confusionOpWrapper(current.data, buffer.data(), width, height, subFrameHeight, sc, performInverseConfusion );
-    //current = cv::Mat(height, width, CV_8UC3, buffer.data()).clone() ;
+    confusionOpWrapper(current.data, buffer.data(), width, height, subFrameHeight, sc, performInverseConfusion );
+    current = cv::Mat(height, width, CV_8UC3, buffer.data()).clone() ;
     
-    //std::string filenameInvConfusion = "testResults/afterInvConfusion" + std::to_string(i) + ".png" ;
-    //cv::imwrite(filenameInvConfusion, current );
+    std::string filenameInvConfusion = "testResults/afterInvConfusion" + std::to_string(i) + ".png" ;
+    cv::imwrite(filenameInvConfusion, current );
 }
 
     //converting the result back to cv::Mat

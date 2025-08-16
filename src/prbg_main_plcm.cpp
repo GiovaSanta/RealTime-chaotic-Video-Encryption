@@ -36,10 +36,10 @@ std::vector<double> generatePRBGMainKeys(double x0, double p, int numParameters4
             std::cout << "PRBG[ " << i << "] = " << keysAndControlPs[i] << std::endl; //debugging purposes
         } else {
             //*sc = xi ;
-            *sc = static_cast<uint64_t>(xi * 1000000000) ;  
+            *sc = static_cast<uint64_t>(xi * 1000000) ;  // when i was using double inside the confusion kernel operations  sc of magnitude up to 1000000000 yielded correct confusion output. when using float instead this limit is smaller
             //*sc = 1000000000 ;  //if i increase for one more order of magnitude then this one, encryption of frame breaks
             //*sc = 1000000;
-            //*sc=10;
+            //*sc=100000;
             std::cout << "PRBG[ " << i << "] = " << *sc << " (this is the global sc value)" << std::endl; //debugging purposes
         } 
     }
