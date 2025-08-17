@@ -26,10 +26,10 @@ __global__ void inverseConfusionKernel ( const unsigned char *input, unsigned ch
         int x = x_base + i ;
         if ( x < width ){  // maybe can remove this if with padding in th future ... or other strategies... i mean this
             
-            double theta = 2* (double)y / ((double) width );
-            double sinVal = sinpi( theta ) ; //use sin function for double precision, sinf for single precision
-            int y1 = ((static_cast<int>(y - x + sc * sinVal) % width) + width) % width  ;  // doing this because % operator in cuda cant do right operation for negative operands
-            int x1 = ((static_cast<int>( x - sc * sinVal) % width ) + width ) % width  ;
+            float theta = 2* (float)y / ((float) width );
+            float sinVal = sinpi( theta ) ; //use sin function for double precision, sinf for single precision
+            int y1 = ((static_cast<int>( (float)y - (float)x + (float)sc * sinVal) % width) + width) % width  ;  // doing this because % operator in cuda cant do right operation for negative operands
+            int x1 = ((static_cast<int>( (float)x - (float)sc * sinVal) % width ) + width ) % width  ;
 
             //printf("pixel in location (%d,%d), now goes to location (%d,) \n", x,y, x1 ) ;
             for(int c = 0; c<NUM_CHANNELS; c++){
@@ -96,9 +96,9 @@ __global__ void confusionKernel( const unsigned char *input, unsigned char * out
         if ( x < width ){  // maybe can remove this if with padding in th future ... or other strategies... i mean this
             
             int y1 = (y + x) % width;
-            double theta = 2.0 * (double)y1 / ( (double) width ) ;
-            double sinVal = sinpi(theta);
-            double op = (double)x + ( ( ( double ) sc) * sinVal ) ;
+            float theta = 2.0 * (float)y1 / ( (float) width ) ;
+            float sinVal = sinpi(theta);
+            float op = (float)x + ( ( ( float ) sc) * sinVal ) ;
             int x1 = ( ( (static_cast<int>( op ) % (width) ) + (width) ) % (width) ) ; 
             for(int c = 0; c < NUM_CHANNELS; c ++){
                 output[NUM_CHANNELS*( y1* width + x1 ) + c ] = input[ NUM_CHANNELS * ( y * width +x) + c ];
