@@ -28,7 +28,7 @@ __device__ void diffusionSeq(int startRow, int endRow, int width, unsigned char 
                 b_byte = byte_stream[ y * width * NUM_CHANNELS + x * NUM_CHANNELS + channelOffset];
                 if( y == startRow && x == 0 ){
                     output[y*width*NUM_CHANNELS + x*NUM_CHANNELS + channelOffset] = (b_byte ^ input[y*width*NUM_CHANNELS + x*NUM_CHANNELS + channelOffset] ^ sd ) - b_byte ;
-                } else{
+                }else {
                     output[y*width*NUM_CHANNELS +x*NUM_CHANNELS + channelOffset] = (b_byte ^  input[y*width*NUM_CHANNELS + x*NUM_CHANNELS + channelOffset] ^  input[ y*width*NUM_CHANNELS + (x - 1)*NUM_CHANNELS + channelOffset ] ) - b_byte ;
                     //output[y*width+x] =255;
                 } 

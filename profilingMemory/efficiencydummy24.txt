@@ -1,0 +1,16 @@
+==31000== NVPROF is profiling process 31000, command: ./encryptApp
+==31000== Some kernel(s) will be replayed on device 0 in order to collect all events/metrics.
+==31000== Profiling application: ./encryptApp
+==31000== Profiling result:
+==31000== Metric result:
+Invocations                               Metric Name                        Metric Description         Min         Max         Avg
+Device "NVIDIA Tegra X1 (0)"
+    Kernel: diffusionKernelv2(unsigned char*, unsigned char*, unsigned char*, int, int, int, int, int, unsigned char*, int)
+          5                            gld_efficiency             Global Memory Load Efficiency      22.19%      22.43%      22.38%
+          5                            gst_efficiency            Global Memory Store Efficiency      11.58%      11.69%      11.67%
+    Kernel: prbgaKernel(unsigned char*, unsigned char*, unsigned char*, double const *, int)
+          1                            gld_efficiency             Global Memory Load Efficiency      16.96%      16.96%      16.96%
+          1                            gst_efficiency            Global Memory Store Efficiency      14.29%      14.29%      14.29%
+    Kernel: invdiffusionKernelv2(unsigned char*, unsigned char*, unsigned char*, int, int, int, int, int, unsigned char*)
+          5                            gld_efficiency             Global Memory Load Efficiency      22.19%      22.19%      22.19%
+          5                            gst_efficiency            Global Memory Store Efficiency      11.69%      11.69%      11.69%

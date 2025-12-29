@@ -1,0 +1,21 @@
+==6860== NVPROF is profiling process 6860, command: ./encryptApp
+==6860== Some kernel(s) will be replayed on device 0 in order to collect all events/metrics.
+==6860== Profiling application: ./encryptApp
+==6860== Profiling result:
+==6860== Metric result:
+Invocations                               Metric Name                        Metric Description         Min         Max         Avg
+Device "NVIDIA Tegra X1 (0)"
+    Kernel: diffusionKernel(unsigned char*, unsigned char*, unsigned char*, int, int, int, int, int, unsigned char*)
+          1                             inst_executed                     Instructions Executed     2611800     2611800     2611800
+          1                                inst_fp_32                   FP Instructions(Single)        1800        1800        1800
+          1                    issue_slot_utilization                    Issue Slot Utilization      46.21%      46.21%      46.21%
+          1                        achieved_occupancy                        Achieved Occupancy    0.899145    0.899145    0.899145
+          1                 warp_execution_efficiency                 Warp Execution Efficiency      97.13%      97.13%      97.13%
+          1                         branch_efficiency                         Branch Efficiency     100.00%     100.00%     100.00%
+          1                          gld_transactions                  Global Load Transactions      692102      692102      692102
+          1                          gst_transactions                 Global Store Transactions      260100      260100      260100
+          1                        l2_read_throughput                     L2 Throughput (Reads)  12.016GB/s  12.016GB/s  12.016GB/s
+          1                       l2_write_throughput                    L2 Throughput (Writes)  5.9858GB/s  5.9858GB/s  5.9858GB/s
+          1                  shared_load_transactions                  Shared Load Transactions       28800       28800       28800
+          1                 shared_store_transactions                 Shared Store Transactions       57600       57600       57600
+          1                         shared_efficiency                  Shared Memory Efficiency     100.00%     100.00%     100.00%

@@ -1,0 +1,35 @@
+==31948== NVPROF is profiling process 31948, command: ./encryptApp
+==31948== Some kernel(s) will be replayed on device 0 in order to collect all events/metrics.
+==31948== Profiling application: ./encryptApp
+==31948== Profiling result:
+==31948== Metric result:
+Invocations                               Metric Name                        Metric Description         Min         Max         Avg
+Device "NVIDIA Tegra X1 (0)"
+    Kernel: invdiffusionKernelv2(unsigned char*, unsigned char*, unsigned char*, int, int, int, int, unsigned char*)
+          1                             inst_executed                     Instructions Executed    45446400    45446400    45446400
+          1                                inst_fp_32                   FP Instructions(Single)           0           0           0
+          1                    issue_slot_utilization                    Issue Slot Utilization      41.77%      41.77%      41.77%
+          1                        achieved_occupancy                        Achieved Occupancy    0.859056    0.859056    0.859056
+          1                 warp_execution_efficiency                 Warp Execution Efficiency      19.68%      19.68%      19.68%
+          1                         branch_efficiency                         Branch Efficiency     100.00%     100.00%     100.00%
+          1                          gld_transactions                  Global Load Transactions     2092802     2092802     2092802
+          1                          gst_transactions                 Global Store Transactions     2201694     2201694     2201694
+          1                        l2_read_throughput                     L2 Throughput (Reads)  3.5552GB/s  3.5552GB/s  3.5552GB/s
+          1                       l2_write_throughput                    L2 Throughput (Writes)  2.4813GB/s  2.4813GB/s  2.4813GB/s
+          1                  shared_load_transactions                  Shared Load Transactions     8563200     8563200     8563200
+          1                 shared_store_transactions                 Shared Store Transactions     3340800     3340800     3340800
+          1                         shared_efficiency                  Shared Memory Efficiency       2.36%       2.36%       2.36%
+    Kernel: diffusionKernelv2(unsigned char*, unsigned char*, unsigned char*, int, int, int, int, unsigned char*, int)
+          1                             inst_executed                     Instructions Executed    40179200    40179200    40179200
+          1                                inst_fp_32                   FP Instructions(Single)       38400       38400       38400
+          1                    issue_slot_utilization                    Issue Slot Utilization      42.25%      42.25%      42.25%
+          1                        achieved_occupancy                        Achieved Occupancy    0.866506    0.866506    0.866506
+          1                 warp_execution_efficiency                 Warp Execution Efficiency      17.69%      17.69%      17.69%
+          1                         branch_efficiency                         Branch Efficiency     100.00%     100.00%     100.00%
+          1                          gld_transactions                  Global Load Transactions     1401602     1401602     1401602
+          1                          gst_transactions                 Global Store Transactions      753098      753098      753098
+          1                        l2_read_throughput                     L2 Throughput (Reads)  3.0432GB/s  3.0432GB/s  3.0432GB/s
+          1                       l2_write_throughput                    L2 Throughput (Writes)  1.0823GB/s  1.0823GB/s  1.0823GB/s
+          1                  shared_load_transactions                  Shared Load Transactions     8371200     8371200     8371200
+          1                 shared_store_transactions                 Shared Store Transactions     3148800     3148800     3148800
+          1                         shared_efficiency                  Shared Memory Efficiency       1.69%       1.69%       1.69%

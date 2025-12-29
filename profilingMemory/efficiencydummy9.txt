@@ -1,0 +1,13 @@
+==10181== NVPROF is profiling process 10181, command: ./encryptApp
+==10181== Some kernel(s) will be replayed on device 0 in order to collect all events/metrics.
+==10181== Profiling application: ./encryptApp
+==10181== Profiling result:
+==10181== Metric result:
+Invocations                               Metric Name                        Metric Description         Min         Max         Avg
+Device "NVIDIA Tegra X1 (0)"
+    Kernel: coalescedLoadKernel(unsigned char*, unsigned char*, int, int)
+          1                            gld_efficiency             Global Memory Load Efficiency      25.53%      25.53%      25.53%
+          1                            gst_efficiency            Global Memory Store Efficiency      16.86%      16.86%      16.86%
+    Kernel: prbgaKernel(unsigned char*, unsigned char*, unsigned char*, double const *, int, int)
+          1                            gld_efficiency             Global Memory Load Efficiency      15.22%      15.22%      15.22%
+          1                            gst_efficiency            Global Memory Store Efficiency      13.36%      13.36%      13.36%

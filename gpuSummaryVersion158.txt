@@ -1,0 +1,19 @@
+==27775== NVPROF is profiling process 27775, command: ./encryptApp
+==27775== Warning: Unified Memory Profiling is not supported on the underlying platform. System requirements for unified memory can be found at: http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#um-requirements
+==27775== Profiling application: ./encryptApp
+==27775== Profiling result:
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+ GPU activities:   83.38%  7.1295ms         1  7.1295ms  7.1295ms  7.1295ms  prbgaKernelv3(unsigned char*, unsigned char*, unsigned char*, double const *, int)
+                    8.99%  769.02us         1  769.02us  769.02us  769.02us  [CUDA memcpy HtoD]
+                    7.63%  651.98us         3  217.33us  216.74us  218.40us  [CUDA memcpy DtoH]
+      API calls:   96.77%  390.25ms         4  97.563ms  727.99us  387.88ms  cudaMalloc
+                    1.83%  7.3799ms         1  7.3799ms  7.3799ms  7.3799ms  cudaDeviceSynchronize
+                    1.17%  4.7121ms         4  1.1780ms  1.0310ms  1.3198ms  cudaMemcpy
+                    0.17%  703.40us         4  175.85us  133.23us  266.73us  cudaFree
+                    0.03%  114.38us         1  114.38us  114.38us  114.38us  cudaLaunchKernel
+                    0.02%  97.137us        97  1.0010us     520ns  23.907us  cuDeviceGetAttribute
+                    0.00%  10.260us         1  10.260us  10.260us  10.260us  cuDeviceTotalMem
+                    0.00%  5.7810us         3  1.9270us  1.3540us  3.0210us  cuDeviceGetCount
+                    0.00%  2.6570us         2  1.3280us     938ns  1.7190us  cuDeviceGet
+                    0.00%  2.0840us         1  2.0840us  2.0840us  2.0840us  cuDeviceGetName
+                    0.00%     729ns         1     729ns     729ns     729ns  cuDeviceGetUuid

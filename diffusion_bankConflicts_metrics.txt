@@ -1,0 +1,21 @@
+==10633== NVPROF is profiling process 10633, command: ./encryptApp
+==10633== Some kernel(s) will be replayed on device 0 in order to collect all events/metrics.
+==10633== Profiling application: ./encryptApp
+==10633== Profiling result:
+==10633== Metric result:
+Invocations                               Metric Name                        Metric Description         Min         Max         Avg
+Device "NVIDIA Tegra X1 (0)"
+    Kernel: diffusionKernel(unsigned char*, unsigned char*, unsigned char*, int, int, int, int, int, unsigned char*)
+          1                             inst_executed                     Instructions Executed    27214200    27214200    27214200
+          1                                inst_fp_32                   FP Instructions(Single)        1800        1800        1800
+          1                    issue_slot_utilization                    Issue Slot Utilization      16.63%      16.63%      16.63%
+          1                        achieved_occupancy                        Achieved Occupancy    0.996975    0.996975    0.996975
+          1                 warp_execution_efficiency                 Warp Execution Efficiency      12.66%      12.66%      12.66%
+          1                         branch_efficiency                         Branch Efficiency     100.00%     100.00%     100.00%
+          1                          gld_transactions                  Global Load Transactions      692102      692102      692102
+          1                          gst_transactions                 Global Store Transactions      260100      260100      260100
+          1                        l2_read_throughput                     L2 Throughput (Reads)  320.77MB/s  320.77MB/s  320.77MB/s
+          1                       l2_write_throughput                    L2 Throughput (Writes)  1.9916GB/s  1.9916GB/s  1.9916GB/s
+          1                  shared_load_transactions                  Shared Load Transactions     1872000     1872000     1872000
+          1                 shared_store_transactions                 Shared Store Transactions      979200      979200      979200
+          1                         shared_efficiency                  Shared Memory Efficiency       6.06%       6.06%       6.06%

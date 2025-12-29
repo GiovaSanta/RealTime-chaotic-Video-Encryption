@@ -27,7 +27,7 @@ __global__ void inverseConfusionKernel ( const unsigned char *input, unsigned ch
         if ( x < width ){  // maybe can remove this if with padding in th future ... or other strategies... i mean this
             
             float theta = 2* (float)y / ((float) width );
-            float sinVal = sinpi( theta ) ; //use sin function for double precision, sinf for single precision
+            float sinVal = sinpif( theta ) ; //use sin function for double precision, sinf for single precision
             int y1 = ((static_cast<int>( (float)y - (float)x + (float)sc * sinVal) % width) + width) % width  ;  // doing this because % operator in cuda cant do right operation for negative operands
             int x1 = ((static_cast<int>( (float)x - (float)sc * sinVal) % width ) + width ) % width  ;
 
@@ -77,11 +77,7 @@ __global__ void confusionKernel( const unsigned char *input, unsigned char * out
     __syncthreads();
 */
 
-/*    for( int i = 0; i < pixelsPerThread; i++){
-        int x = x_base + i;
-        if(x <width){
-            for(int c = 0; c < NUM_CHANNELS; c++ ){
-                output[NUM_CHANNELS * ( y * width + x) + c ] = tile_in[NUM_CHANNELS * (local_y*width +x) + c ];
+/*    for( int i = 0; i < pixelsPerThread; i++){++){M_CHANNELS * (local_y*width +x) + c ];
             }
         }
     }
@@ -97,14 +93,14 @@ __global__ void confusionKernel( const unsigned char *input, unsigned char * out
             
             int y1 = (y + x) % width;
             float theta = 2.0 * (float)y1 / ( (float) width ) ;
-            float sinVal = sinpi(theta);
+            float sinVal = sinpif(theta);
             float op = (float)x + ( ( ( float ) sc) * sinVal ) ;
             int x1 = ( ( (static_cast<int>( op ) % (width) ) + (width) ) % (width) ) ; 
             for(int c = 0; c < NUM_CHANNELS; c ++){
                 output[NUM_CHANNELS*( y1* width + x1 ) + c ] = input[ NUM_CHANNELS * ( y * width +x) + c ];
             }
             
-            //printf("pixel in location (%d,%d), now goes to location (%d,%d) \n", x,y, x1,y1 ) ;
+            printf("pixel in location (%d,), now goes to location (%d,%d) \n", x, x1,y1 ) ;
             //output[y1 * width + x1 ] = input[y1 * width + x1  ] ; 
         }
     }
@@ -118,16 +114,18 @@ void confusionOpWrapper( unsigned char *input, unsigned char *output, int width 
     unsigned char *d_input;
     unsigned char *d_output;
 
-    
     int dimThreadsYdir = subframe_height ;
     int dimThreadsXdir =  1024/dimThreadsYdir ; // 1024 is the total number of threads that can be assigned per block on the jetson nano. dimThreadsXdir takes truncated value of such calculation
+
+    //dimThreadsYdir = 16 ;
+    //dimThreadsXdir = 16 ;
 
     //printf("numThreads allocated in xDir : %d \n", dimThreadsXdir);
     //printf("numThreads allocated in yDir : %d \n", dimThreadsYdir) ;
 
     int pixelsPerThread = ceilf( ((float)(subframe_height * width))/((float)(dimThreadsXdir*dimThreadsYdir) ) );// since in this current release the subframes will most likely contain more then 1024 pixels 
 
-    //printf("pixelsPer thread : %d\n", pixelsPerThread) ;
+    printf("pixelsPer thread : %d\n", pixelsPerThread) ;
     cudaMalloc(&d_input, total_pixels * NUM_CHANNELS * sizeof( unsigned char ) ) ;
 
     cudaMalloc(&d_output, total_pixels * NUM_CHANNELS * sizeof( unsigned char ) ) ;
