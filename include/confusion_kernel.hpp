@@ -5,6 +5,15 @@
 #include <opencv2/opencv.hpp> 
 #include <cstdint>
 
-void confusionOpWrapper( unsigned char *input, unsigned char *output, int width , int height, int subframe_height, uint64_t sc, int performInverseConfusion);
+void confusionOpWrapper( unsigned char *input, 
+                         unsigned char * d_input,
+                         unsigned char *output,
+                         unsigned char *d_output,
+                         int width ,
+                         int height,
+                         int subframe_height,
+                         uint64_t sc,
+                         int performInverseConfusion,
+                         cudaStream_t stream1 );
 
 #endif 

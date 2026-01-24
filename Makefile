@@ -9,7 +9,7 @@ OPENCV_FLAGS := $(shell pkg-config --cflags --libs opencv4)
 TARGET := encryptApp
 #SRC := src/main.cpp src/prbg_main_plcm.cpp src/prbga_kernel.cu src/confusion_kernel.cu src/diffusion_kernel.cu
 
-SRC := src/main.cpp src/prbg_main_plcm.cpp src/prbga_kernel.cu src/confusion_kernelVersion2.cu src/diffusion_kernelv4.cu
+SRC := src/main6.cpp src/prbg_main_plcm.cpp src/prbga_kernel.cu src/confusion_kernelVersion2.cu src/diffusion_kernelv4.cu
 
 OBJS := $(SRC:.cpp=.o)
 OBJS := $(OBJS:.cu=.o)

@@ -1,0 +1,19 @@
+==26788== NVPROF is profiling process 26788, command: ./encryptApp
+==26788== Warning: Unified Memory Profiling is not supported on the underlying platform. System requirements for unified memory can be found at: http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#um-requirements
+==26788== Profiling application: ./encryptApp
+==26788== Warning: 3 records have invalid timestamps due to insufficient device buffer space. You can configure the buffer space using the option --device-buffer-size.
+==26788== Warning: 2 records have invalid timestamps due to insufficient semaphore pool size. You can configure the pool size using the option --profiling-semaphore-pool-size.
+==26788== Profiling result:
+No kernels were profiled.
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+      API calls:   75.84%  340.84ms         8  42.605ms  2.2920us  340.80ms  cudaFree
+                   22.57%  101.45ms         8  12.682ms  2.7610us  101.22ms  cudaMemcpy
+                    1.52%  6.8480ms         7  978.29us  16.042us  1.7893ms  cudaMalloc
+                    0.03%  122.24us         3  40.747us  8.7500us  103.65us  cudaLaunchKernel
+                    0.03%  115.94us        97  1.1950us     625ns  25.261us  cuDeviceGetAttribute
+                    0.00%  10.052us         2  5.0260us  4.6880us  5.3640us  cudaDeviceSynchronize
+                    0.00%  8.8550us         1  8.8550us  8.8550us  8.8550us  cuDeviceTotalMem
+                    0.00%  6.1980us         3  2.0660us  1.2500us  2.9690us  cuDeviceGetCount
+                    0.00%  3.4380us         2  1.7190us  1.5110us  1.9270us  cuDeviceGet
+                    0.00%  2.2390us         1  2.2390us  2.2390us  2.2390us  cuDeviceGetName
+                    0.00%     937ns         1     937ns     937ns     937ns  cuDeviceGetUuid

@@ -1,0 +1,20 @@
+==11685== NVPROF is profiling process 11685, command: ./encryptApp
+==11685== Warning: Unified Memory Profiling is not supported on the underlying platform. System requirements for unified memory can be found at: http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#um-requirements
+==11685== Profiling application: ./encryptApp
+==11685== Profiling result:
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+ GPU activities:   49.60%  31.098ms         5  6.2196ms  6.1837ms  6.2737ms  inverseConfusionKernel(unsigned char const *, unsigned char*, int, int, int, unsigned long)
+                   18.45%  11.568ms         5  2.3137ms  2.3091ms  2.3164ms  confusionKernel(unsigned char*, unsigned char*, int, int, int, unsigned long)
+                   15.34%  9.6171ms        11  874.29us  654.02us  1.2265ms  [CUDA memcpy HtoD]
+                   13.82%  8.6666ms        11  787.88us  96.676us  1.1375ms  [CUDA memcpy DtoH]
+                    2.79%  1.7514ms         1  1.7514ms  1.7514ms  1.7514ms  prbgaKernelv4(unsigned char*, unsigned char*, unsigned char*, double const *, int)
+      API calls:   83.90%  465.70ms         7  66.529ms  135.73us  464.68ms  cudaFree
+                   13.75%  76.307ms        22  3.4685ms  1.1466ms  8.4510ms  cudaMemcpy
+                    2.05%  11.359ms         6  1.8931ms  1.0445ms  2.8688ms  cudaMalloc
+                    0.28%  1.5451ms        11  140.47us  104.48us  294.96us  cudaLaunchKernel
+                    0.02%  118.02us        97  1.2160us     677ns  24.636us  cuDeviceGetAttribute
+                    0.00%  7.9690us         1  7.9690us  7.9690us  7.9690us  cuDeviceTotalMem
+                    0.00%  6.3030us         3  2.1010us  1.6150us  2.5000us  cuDeviceGetCount
+                    0.00%  2.9690us         2  1.4840us  1.1460us  1.8230us  cuDeviceGet
+                    0.00%  1.7180us         1  1.7180us  1.7180us  1.7180us  cuDeviceGetName
+                    0.00%     938ns         1     938ns     938ns     938ns  cuDeviceGetUuid

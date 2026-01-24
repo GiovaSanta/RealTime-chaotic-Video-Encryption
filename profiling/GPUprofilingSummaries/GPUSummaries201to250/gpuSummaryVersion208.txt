@@ -1,0 +1,21 @@
+==5939== NVPROF is profiling process 5939, command: ./encryptApp
+==5939== Warning: Unified Memory Profiling is not supported on the underlying platform. System requirements for unified memory can be found at: http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#um-requirements
+==5939== Profiling application: ./encryptApp
+==5939== Profiling result:
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+ GPU activities:   24.10%  14.987ms         5  2.9974ms  2.5732ms  4.6175ms  diffusionKernelv7(unsigned char*, unsigned char*, unsigned char*, int, int, int, int, int, unsigned char*, int)
+                   22.30%  13.863ms         5  2.7726ms  2.7535ms  2.8005ms  invdiffusionKernelv7(unsigned char*, unsigned char*, unsigned char*, int, int, int, int, int, unsigned char*)
+                   21.56%  13.407ms        12  1.1172ms  2.8650us  4.0525ms  [CUDA memcpy DtoH]
+                   16.28%  10.123ms         1  10.123ms  10.123ms  10.123ms  prbgaKernelv4(unsigned char*, unsigned char*, unsigned char*, double const *, int)
+                   15.76%  9.7984ms        12  816.54us  1.6670us  1.4014ms  [CUDA memcpy HtoD]
+      API calls:   83.28%  476.32ms         8  59.540ms  130.84us  475.11ms  cudaFree
+                    9.99%  57.115ms        24  2.3798ms  111.93us  7.3129ms  cudaMemcpy
+                    4.26%  24.380ms         6  4.0633ms  2.8151ms  10.220ms  cudaDeviceSynchronize
+                    2.20%  12.609ms         7  1.8013ms  1.3009ms  2.1327ms  cudaMalloc
+                    0.24%  1.3560ms        11  123.27us  100.21us  224.01us  cudaLaunchKernel
+                    0.02%  127.60us        97  1.3150us     729ns  29.531us  cuDeviceGetAttribute
+                    0.00%  10.000us         1  10.000us  10.000us  10.000us  cuDeviceTotalMem
+                    0.00%  6.1460us         3  2.0480us  1.5100us  2.9170us  cuDeviceGetCount
+                    0.00%  3.3860us         2  1.6930us  1.5110us  1.8750us  cuDeviceGet
+                    0.00%  2.2390us         1  2.2390us  2.2390us  2.2390us  cuDeviceGetName
+                    0.00%     937ns         1     937ns     937ns     937ns  cuDeviceGetUuid

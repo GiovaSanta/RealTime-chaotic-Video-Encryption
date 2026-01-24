@@ -4,9 +4,10 @@
 #include "../include/encrypt_kernel.hpp"
 
 //#define VALUESGENERATEDPRBGA 768 
+#define NUM_CHANNELS 3
 
 //will need to redo this one function do it well following how the prbg for the main thread was implemented
-__device__ void prbga_plcm(double xi, double p, double *output, int numValuesGeneratedPRBGA ){
+__device__ void prbga_plcm(double xi, double p, double *output, int numValuesGeneratedPRBGA ) {
     
     for ( int i = 0 ; i < numValuesGeneratedPRBGA ; i++ ) {
         if ( xi >= 0 && xi < p ) {
@@ -57,6 +58,33 @@ __device__ void prbga_plcm_v3(double xi, double p, double *output, int numValues
         output[index]=xi ;
 }
 
+__device__ void prbga_plcm_v4(double xi, double p, double *output, int numValuesGeneratedPRBGA, int index) {
+    
+    for(int i = 0 ; i < numValuesGeneratedPRBGA; i ++ ) {
+        
+        if ( xi >= 0 && xi < p ) {
+            xi = xi / p ;
+        } 
+        else if( xi >= p && xi <= 0.5 ) {
+            xi = (xi - p) / (0.5 - p) ;
+        }
+        else if( xi > 0.5 && xi <= 1.0 ) {
+            //originally in the paper there is a recursive call but as that recursion is always one stepped lets say... 
+            //...so we can just avoid the recursion and instead write the checks again that the onestep recursion would have done
+            //xi = xi > 1.0 ? 1.0 : xi ; //we are clamping the value to 1 just in case
+            //xi = xi < 0.0 ? 0.0 : xi ; //similar if ever the value is negative
+            xi = 1.0 - xi ;
+            if ( xi >= 0 && xi < p) {
+                xi = xi / p ;
+            }
+            else if ( xi >= p && xi <= 0.5) {
+                xi = (xi - p) / ( 0.5 - p ) ;
+            }
+        }
+        output[index + i] = xi ;    
+    }
+}
+
 __device__ __forceinline__ void prbga_plcm_v2( double xi, const double p, double* __restrict__ output, int n) {
     
     const double inv_p = 1.0 / p;
@@ -86,7 +114,6 @@ __global__ void prbgaKernel( unsigned char *finalByteStream, unsigned char *outp
     int blockId_x = blockIdx.x ;
     int blockId_y = blockIdx.y ;  
     int tid_x = threadIdx.x ;
-
 
     //__shared__ double PRBGA_values1[VALUESGENERATEDPRBGA];
     //__shared__ double PRBGA_values2[VALUESGENERATEDPRBGA]; 
@@ -270,50 +297,87 @@ __global__ void prbgaKernelv3( unsigned char *finalByteStream, unsigned char *ou
 
 }
 
-void PRBGAandByteStreamGenWrapper(double * d_keysAndControlPs, 
-                                  const std::vector<double>& keysAndControlPs, 
-                                  unsigned char * d_values4ByteStream_1, 
-                                  unsigned char * d_values4ByteStream_2, 
-                                  unsigned char * d_byteStreamFinal, 
-                                  std::vector<unsigned char>& byteStreamFinal, 
-                                  std::vector<unsigned char>& output1_bytes, 
-                                  std::vector<unsigned char>& output2_bytes, 
-                                  const int PRBGAiterations, 
-                                  int subframeHeight, 
-                                  int subframeWidth, 
-                                  int width, 
-                                  int height ) {
+__global__ void prbgaKernelv4( unsigned char *finalByteStream, unsigned char *output1_bytes, unsigned char *output2_bytes, const double *prbga_keys_and_control_ps, const int numValuesGeneratedPRBGA ) {
+ 
+    int blockId_x = blockIdx.x ;
+    int tid_x = threadIdx.x ; 
 
-    int numParameters = keysAndControlPs.size(); // parameters being the keys and control parameters for the subfframes
+    extern __shared__ double shared_mem[];
+
+    double *PRBGA_values1 = shared_mem ;
+    double *PRBGA_values2 = shared_mem + ( (blockDim.x) * numValuesGeneratedPRBGA ) ;
+
+    double x = 0.5 * prbga_keys_and_control_ps[ 2 * ( blockId_x * blockDim.x + tid_x ) ] ;
+    double k = 0.5 * prbga_keys_and_control_ps[ 2 * ( blockId_x * blockDim.x + tid_x ) + 1 ] ;
+
+    prbga_plcm_v4( x, k, PRBGA_values1, numValuesGeneratedPRBGA, tid_x) ;
+    
+    //printf(" %d\n ", threadIdx.x );
+
+    prbga_plcm_v4( x, k*0.5, PRBGA_values2, numValuesGeneratedPRBGA, tid_x ) ;
+    
+    for( int i = 0; i < numValuesGeneratedPRBGA; i ++ ) {
+        
+        uint64_t bits1 = *reinterpret_cast<uint64_t*>( &PRBGA_values1[tid_x + i] ) ;
+        uint64_t bits2 = *reinterpret_cast<uint64_t*>( &PRBGA_values2[tid_x + i] ) ;
+
+        uint64_t mantissa1 = bits1 & 0x000FFFFFFFFFFFFF ;
+        uint64_t mantissa2 = bits2 & 0x000FFFFFFFFFFFFF ;
+
+        int byteIndex = ( (blockId_x * blockDim.x + tid_x) * numValuesGeneratedPRBGA + i ) * 6 ;
+        
+        
+            for (int j = 0; j < 6; ++j) {
+
+                output1_bytes[byteIndex + j] = ( mantissa1 >> (8 * (5 - j))) & 0xFF ;
+                
+                //if( tid_x== 0 && j == 0) { printf("\n %d \n", output1_bytes[byteIndex + j]); } 
+
+                output2_bytes[byteIndex + j] = ( mantissa2 >> (8 * (5 - j))) & 0xFF ;
+                
+                //if( tid_x== 0 && j == 0) { printf("%d \n", output2_bytes[byteIndex + j]); }
+
+                finalByteStream[byteIndex +j] = output1_bytes[byteIndex + j] ^ output2_bytes[byteIndex + j]; //the final byteStream derived from the previous calculated byte streams
+            
+                //if (tid_x == 0 && j == 0) { printf("%d \n", finalByteStream[ byteIndex + j ]); }
+            }       
+    }
+
+}
+
+void PRBGAandByteStreamGenWrapper( double * d_keysAndControlPs, 
+                                   //const std::vector<double>& keysAndControlPs, 
+                                   double * keysAndControlPs,
+                                   int keysAndControlPsSize,
+                                   unsigned char * d_values4ByteStream_1, 
+                                   unsigned char * d_values4ByteStream_2, 
+                                   unsigned char * d_byteStreamFinal, 
+                                   std::vector<unsigned char>& byteStreamFinal,  
+                                   const int PRBGAiterations, 
+                                   int subframeHeight, 
+                                   int subframeWidth, 
+                                   int width, 
+                                   int height,
+                                   cudaStream_t stream1) {
+
+    int numParameters = keysAndControlPsSize; // parameters being the keys and control parameters for the subfframes
 
     //printf("numParameters: %d\n", numParameters); //12800
     
     int numKeys = numParameters/2 ;
-    //printf("numKeys: %d\n", numKeys) ;
+    //printf("numKeys: %d\n", numKeys) ; //total number of keys for all prbgas 
 
     int blockdimx = ( width ) / ( subframeWidth ) ; 
     int blockdimy = ( height ) / ( subframeHeight ) ; 
 
     int totalSize = numKeys * PRBGAiterations * 6 ; //should be 128 * 768 *6 . is the total size which considers all the arrays of values reproduced by all called PRBGAs. its expressed in bytes. 
 
-    //printf("total size finalbyteArray: %d\n", totalSize) ;
-
-    //printf("singular PRBGa iterations:%d\n", PRBGAiterations) ;
-    //printf("numParameters: %d\n", numParameters ) ;
-
-    //printf("blockDim x : %d\n", blockdimx ) ;
-    //printf("blockDim y : %d\n", blockdimy ) ;
-    
-    //unsigned char * d_values4ByteStream_1 ; 
-    //unsigned char * d_values4ByteStream_2 ; 
-
-    //unsigned char * d_byteStreamFinal ; // this is the final byte stream array containing all the 128 bytestream arrays contigously in memory. 
-                                        // it is of size 128 * 768 * 6 bytes, and it will be used for the diffusion step of the encryption.
-
     //copy keys and controlParameters to device 
-    cudaMemcpy(d_keysAndControlPs, keysAndControlPs.data(), numParameters * sizeof( double ), cudaMemcpyHostToDevice);
     
-    //printf("%f\n", d_keysAndControlPs[0]);
+    //printf(" %f %f", keysAndControlPs[0], keysAndControlPs[1] ) ; // debug purpose
+    cudaMemcpyAsync(d_keysAndControlPs, keysAndControlPs, numParameters * sizeof( double ), cudaMemcpyHostToDevice);
+
+    //printf("first element keysAndControlPs %f\n", keysAndControlPs[0]);
 
     //launch the kernel
     //dim3 blocks( blockdimx, blockdimy ) ;  
@@ -321,33 +385,40 @@ void PRBGAandByteStreamGenWrapper(double * d_keysAndControlPs,
     //dim3 threads( 8, 2 ) ;
     //dim3 threads( PRBGAiterations ) ;
 
-    dim3 threads( 64 ) ;
-    dim3 blocks( 2400 ) ; //153600 prbgas / 512 
+    int threadsPerBlock = 64 ;
+    //threadsPerBlock = 6 ;
+    int blocksPerGrid = ( (width * height) / 6) / threadsPerBlock ;
+
+    //printf("prbga kernel blocks per grid: %d\n", blocksPerGrid ) ;
+
+    dim3 threads( threadsPerBlock ) ;
+    dim3 blocks( blocksPerGrid ) ; 
 
     //size_t sharedMemPerBlock = 2 * PRBGAiterations * sizeof(double) ;
-    size_t sharedMemPerBlock = 2 * 64 * sizeof(double);
+    size_t sharedMemPerBlock = 2 * threadsPerBlock * PRBGAiterations * sizeof(double)  ;
 
     //printf("prbga iterations: %d\n", PRBGAiterations );
 
-    prbgaKernelv3<<<blocks, threads, sharedMemPerBlock>>>( d_byteStreamFinal, d_values4ByteStream_1, d_values4ByteStream_2, d_keysAndControlPs, PRBGAiterations ) ;
+    prbgaKernelv4<<<blocks, threads, sharedMemPerBlock, stream1>>>( d_byteStreamFinal, d_values4ByteStream_1, d_values4ByteStream_2, d_keysAndControlPs, PRBGAiterations ) ;
 
     //cudaDeviceSynchronize();
    
     //copy results back  
-    output1_bytes.resize( totalSize ) ; //the total size is in bytes so we should be good
-    output2_bytes.resize( totalSize ) ; 
+    //output1_bytes.resize( totalSize ) ; //the total size is in bytes so we should be good
+    //output2_bytes.resize( totalSize ) ; 
 
     //printf("bytestream final size: %d\n", byteStreamFinal.size() ) ;
     byteStreamFinal.resize ( totalSize ) ;
 
     //cudaMemcpy(output1_bytes.data(), d_values4ByteStream_1, totalSize * sizeof( unsigned char), cudaMemcpyDeviceToHost );
     //cudaMemcpy(output2_bytes.data(), d_values4ByteStream_2, totalSize * sizeof( unsigned char), cudaMemcpyDeviceToHost ) ;
-    cudaMemcpy(byteStreamFinal.data(), d_byteStreamFinal, totalSize * sizeof( unsigned char), cudaMemcpyDeviceToHost ) ;
+    
+    //cudaMemcpy(byteStreamFinal.data(), d_byteStreamFinal, totalSize * sizeof( unsigned char), cudaMemcpyDeviceToHost ) ; //need the memcopy to host if want to print the array (debug purposes)
     
     //clean up
-    cudaFree(d_keysAndControlPs);
-    cudaFree(d_values4ByteStream_1);
-    cudaFree(d_values4ByteStream_2);
-    cudaFree(d_byteStreamFinal);
+    //cudaFree(d_keysAndControlPs);
+    //cudaFree(d_values4ByteStream_1);
+    //cudaFree(d_values4ByteStream_2);
+    //cudaFree(d_byteStreamFinal);
 
 }

@@ -1,9 +1,10 @@
 #include <iostream>
 #include <stdint.h>
 #include "../include/diffusion_kernel.hpp"
+#include <cuda_profiler_api.h>
 
+#define ROUNDS 5
 #define NUM_CHANNELS 3
-#define ROUNDS 1
 
 //#define TOTALPIXELSSUBFRAME 4608 //the specifc subframe at focus is 6 * 768 pixels in total
 
@@ -279,111 +280,13 @@ __global__ void invdiffusionKernel(const unsigned char *input, unsigned char *ou
 
 } 
 
-/*__global__ void diffusionKernel(const unsigned char *input, unsigned char *output, const unsigned char *byte_stream, int width, int height, int subframe_height, int performInverseDiffusion, unsigned char * d_sd_array ) {
-
-    // will worry about parametrizing better as soon as complete encrption process for the specific case of the 768x768 greyscale frame
-
-    //int tid_x = threadIdx.x ; //0 to 153
-    //int tid_y = threadIdx.y ; // 0 to 5
-
-    int blockId_x = blockIdx.x ;
-    int blockId_y = blockIdx.y ;
-    int tid_x = threadIdx.x ;
-    int tid_y = threadIdx.y ;
-    int channelOffset = blockId_x / gridDim.x ;
-
-    int gx = blockIdx.x * subframe_height + threadIdx.x ;
-    int gy = blockIdx.y * subframe_height + threadIdx.y ;
-
-    if (gx >= width || gy >= height)
-    return;
-
-    extern __shared__ unsigned char tile[] ;
-
-    unsigned char *tile1 = tile ;
-    unsigned char *tile2 = tile + subframe_height * subframe_height * NUM_CHANNELS ;
-    unsigned char *tile_byteStream = tile2 + subframe_height * subframe_height * NUM_CHANNELS ;
-
-    unsigned char safePixB = (input)[ (gy * width + gx)*NUM_CHANNELS + 0 ] ;
-    tile1[ ( threadIdx.y * subframe_height + threadIdx.x)*NUM_CHANNELS + 0 ] = safePixB ;
-
-    unsigned char safePixG = (input)[ (gy * width + gx)*NUM_CHANNELS + 1 ] ;
-    tile1[ ( threadIdx.y * subframe_height + threadIdx.x)*NUM_CHANNELS + 1 ] = safePixG ;
-
-    unsigned char safePixR = (input)[ (gy * width + gx)*NUM_CHANNELS + 2 ] ;
-    tile1[ ( threadIdx.y * subframe_height + threadIdx.x)*NUM_CHANNELS +2 ] = safePixR ;
-
-    unsigned char byte4B = (byte_stream)[ (gy * width + gx)*NUM_CHANNELS + 0 ] ;
-    tile_byteStream[ ( threadIdx.y * subframe_height + threadIdx.x)*NUM_CHANNELS + 0 ] = byte4B ;
-
-    unsigned char byte4G = (byte_stream)[ (gy * width + gx)*NUM_CHANNELS + 1 ] ;
-    tile_byteStream[ ( threadIdx.y * subframe_height + threadIdx.x)*NUM_CHANNELS + 1 ] = byte4G ;
-
-    unsigned char byte4R = (byte_stream)[ (gy * width + gx)*NUM_CHANNELS + 2 ] ;
-    tile_byteStream[ ( threadIdx.y * subframe_height + threadIdx.x)*NUM_CHANNELS +2 ] = byte4R ;
-
-
-
-    //channelOffset = 0 ; //focusing on the blue channel for now just for debugging purposes ....
-
-    //__shared__ unsigned char diffused_subframe[TOTALPIXELSSUBFRAME]; // allocating shared memory
-
-    //if (tid == 0 ){
-
-    if( ( tid_x == 0 ) && ( tid_y == 0 ) ) {
-    
-    unsigned char sd ;
-
-    int startRow =  blockId_y  * subframe_height ;  //startRow of the subframe
-    int endRow =  startRow + subframe_height - 1 ;
-
-    int startCol = blockId_x * subframe_height ;
-    int endCol = startCol + subframe_height - 1 ;
-    //printf ( "startRow of blockId %d: %d \n", blockId, startRow) ;
-    
-
-    // the diffusion seed of a specific subframe i is the last pixel value of the subframe( (i+1) mod n ) (n being number of assitant threads in the article (n being nummber of blocs in my case ))
-            
-    int sd_block_x = (blockId_x + 1) % gridDim.x ; //this is the y_coordinate of the selected pixel if we imagine the frame values in 2d space!!! if want to get the position in the linearized frame we must multiply by the width 
-
-    //printf("\n sd_block X : = %d \n", sd_block_x) ;
-    int sd_block_y = (blockId_y + ((blockId_x + 1)/gridDim.x)) % gridDim.y ;
-
-    //printf("\n sd block Y : = %d \n ", sd_block_y);
-    int sd_coordinate = ( ( sd_block_y * width * subframe_height )    +
-                        ( sd_block_x * subframe_height )    +
-                        ( gridDim.x * subframe_height * (subframe_height - 1) + subframe_height - 1) ) * NUM_CHANNELS ;
-                
-    //printf("\n sd coordinate: %d\n ", sd_coordinate );
-
-    //printf("\nblock (%d, %d) will pick its sd from this location: %d, which is %d\n", blockId_x, blockId_y, sd_coordinate, input[sd_coordinate]);
-        
-    sd = input[ sd_coordinate  ] ;
-    d_sd_array[ (blockId_y * gridDim.x) + blockId_x ] = sd ;    
-        
-    diffusionSeq(startRow, endRow , startCol, endCol, width, sd, tile1, tile_byteStream, tile2 , channelOffset, performInverseDiffusion  ); //this is the sequential version based oon chebishev on the paper.. unfutunatly it is nonParallelizable
-    
-    }
-
-    __syncthreads();
-
-    (output)[(gy * width + gx)*NUM_CHANNELS + 0] = tile2[ (threadIdx.y * subframe_height + threadIdx.x) * NUM_CHANNELS + 0];
-    (output)[(gy * width + gx)*NUM_CHANNELS + 1] = tile2[ (threadIdx.y * subframe_height + threadIdx.x) * NUM_CHANNELS + 1];
-    (output)[(gy * width + gx)*NUM_CHANNELS + 2] = tile2[ (threadIdx.y * subframe_height + threadIdx.x) * NUM_CHANNELS + 2];
-
-    //printf("\nsd of block(%d, %d)= %d\n", blockId_x, blockId_y, d_sd_array[(blockId_y * gridDim.x + blockId_x)]) ;
-    //}
-    //__syncthreads();
-    
-}*/
-
 __global__ void diffusionKernelv3(unsigned char *input, unsigned char *output, unsigned char *byte_stream, int width, int height, int subframe_height, int performInverseDiffusion, unsigned char * d_sd_array, int round ) {
     
     int blockId_x = blockIdx.x ;
     int blockId_y = blockIdx.y ;
     int tid_x = threadIdx.x ;
     int tid_y = threadIdx.y ;
-    int channelOffset = blockId_x / gridDim.x ;
+    //int channelOffset = blockId_x / gridDim.x ;
 
     int gx = blockIdx.x * subframe_height + threadIdx.x ;
     int gy = blockIdx.y * subframe_height + threadIdx.y ;
@@ -498,7 +401,7 @@ __global__ void invdiffusionKernelv3(unsigned char *input, unsigned char *output
     int blockId_y = blockIdx.y ;
     int tid_x = threadIdx.x ;
     int tid_y = threadIdx.y ;
-    int channelOffset = blockId_x / gridDim.x ;
+    //int channelOffset = blockId_x / gridDim.x ;
 
     int gx = blockIdx.x * subframe_height + threadIdx.x ;
     int gy = blockIdx.y * subframe_height + threadIdx.y ;
@@ -571,7 +474,7 @@ __global__ void diffusionKernelv2( unsigned char *input, unsigned char *output, 
     int blockId_y = blockIdx.y ;
     int tid_x = threadIdx.x ;
     int tid_y = threadIdx.y ;
-    int channelOffset = blockId_x / gridDim.x ;
+    //int channelOffset = blockId_x / gridDim.x ;
 
     int gx = blockIdx.x * subframe_width + threadIdx.x ;
     int gy = blockIdx.y * subframe_height + threadIdx.y ;
@@ -730,7 +633,7 @@ __global__ void invdiffusionKernelv2( unsigned char *input, unsigned char *outpu
     int blockId_y = blockIdx.y ;
     int tid_x = threadIdx.x ;
     int tid_y = threadIdx.y ;
-    int channelOffset = blockId_x / gridDim.x ;
+    //int channelOffset = blockId_x / gridDim.x ;
 
     int gx = blockIdx.x * subframe_width + threadIdx.x ;
     int gy = blockIdx.y * subframe_height + threadIdx.y ;
@@ -817,7 +720,7 @@ __global__ void diffusionKernelv4( unsigned char *input, unsigned char *output, 
     int blockId_y = blockIdx.y ;
     int tid_x = threadIdx.x ;
     int tid_y = threadIdx.y ;
-    int channelOffset = blockId_x / gridDim.x ;
+    //int channelOffset = blockId_x / gridDim.x ;
 
     int gx = blockIdx.x * subframe_width + threadIdx.x ;
     int gy = blockIdx.y * subframe_height + threadIdx.y ;
@@ -987,7 +890,7 @@ __global__ void invdiffusionKernelv4( unsigned char *input, unsigned char *outpu
     int blockId_y = blockIdx.y ;
     int tid_x = threadIdx.x ;
     int tid_y = threadIdx.y ;
-    int channelOffset = blockId_x / gridDim.x ;
+    //int channelOffset = blockId_x / gridDim.x ;
 
     int gx = blockIdx.x * subframe_width + threadIdx.x ;
     int gy = blockIdx.y * subframe_height + threadIdx.y ;
@@ -1088,7 +991,7 @@ __global__ void diffusionKernelv5( unsigned char *input, unsigned char *output, 
     int blockId_y = blockIdx.y ;
     int tid_x = threadIdx.x ;
     int tid_y = threadIdx.y ;
-    int channelOffset = blockId_x / gridDim.x ;
+    //int channelOffset = blockId_x / gridDim.x ;
 
     int gx = blockIdx.x * subframe_width + threadIdx.x ;
     int gy = blockIdx.y * subframe_height + threadIdx.y ;
@@ -1261,7 +1164,7 @@ __global__ void invdiffusionKernelv5( unsigned char *input, unsigned char *outpu
     int blockId_y = blockIdx.y ;
     int tid_x = threadIdx.x ;
     int tid_y = threadIdx.y ;
-    int channelOffset = blockId_x / gridDim.x ;
+    //int channelOffset = blockId_x / gridDim.x ;
 
     int gx = blockIdx.x * subframe_width + threadIdx.x ;
     int gy = blockIdx.y * subframe_height + threadIdx.y ;
@@ -1363,7 +1266,7 @@ __global__ void diffusionKernelv6( unsigned char *input, unsigned char *output, 
     int blockId_y = blockIdx.y ;
     int tid_x = threadIdx.x ;
     int tid_y = threadIdx.y ;
-    int channelOffset = blockId_x / gridDim.x ;
+    //int channelOffset = blockId_x / gridDim.x ;
 
     int gx = blockIdx.x * subframe_width + threadIdx.x ;
     int gy = blockIdx.y * subframe_height + threadIdx.y ;
@@ -1536,7 +1439,7 @@ __global__ void invdiffusionKernelv6( unsigned char *input, unsigned char *outpu
     int blockId_y = blockIdx.y ;
     int tid_x = threadIdx.x ;
     int tid_y = threadIdx.y ;
-    int channelOffset = blockId_x / gridDim.x ;
+    //int channelOffset = blockId_x / gridDim.x ;
 
     int gx = blockIdx.x * subframe_width + threadIdx.x ;
     int gy = blockIdx.y * subframe_height + threadIdx.y ;
@@ -1631,14 +1534,13 @@ __global__ void invdiffusionKernelv6( unsigned char *input, unsigned char *outpu
     output[ (gy * width + gx) * NUM_CHANNELS + 2  ] =  tile2[ (threadIdx.y * subframe_width + threadIdx.x) * NUM_CHANNELS + 2] ;    
     //}
 }
-
 __global__ void invdiffusionKernelv7( unsigned char *input, unsigned char *output, unsigned char *byte_stream, int width, int height, int subframe_height, int subframe_width, int performInverseDiffusion, unsigned char * d_sd_array ) {
 
     int blockId_x = blockIdx.x ;
     int blockId_y = blockIdx.y ;
     int tid_x = threadIdx.x ;
     int tid_y = threadIdx.y ;
-    int channelOffset = blockId_x / gridDim.x ;
+    //int channelOffset = blockId_x / gridDim.x ;
 
     int gx = blockIdx.x * subframe_width + threadIdx.x ;
     int gy = blockIdx.y * subframe_height + threadIdx.y ;
@@ -1659,7 +1561,7 @@ __global__ void invdiffusionKernelv7( unsigned char *input, unsigned char *outpu
     uchar3 *tile_byteStream = reinterpret_cast<uchar3*>(tile2) + subframe_height * subframe_width ; 
     //uchar3 *tile_byteStream = reinterpret_cast<uchar3*>(tile2) + 48 ;
     
-    //unsigned char *tile_byteStream = tile2 + subframe_height * subframe_width * NUM_CHANNELS;
+    //unsigned char *tile_byteStream = tile2 + subframe_height * subframe_width ;
     //__shared__ unsigned char tile_byteStream[144] ;
     
     unsigned char safePixB =  (input)[ (gy * width + gx) * NUM_CHANNELS + 0 ] ;
@@ -1675,8 +1577,12 @@ __global__ void invdiffusionKernelv7( unsigned char *input, unsigned char *outpu
     tile_byteStream[  threadIdx.y * subframe_width + threadIdx.x ] = safe3bytes ; 
 
     //unsigned char safebyte = (byte_stream)[ globalIndex ] ;
+
+    //printf(" block(%d, %d) , thread (%d, %d) prende safebyte %d \n", blockId_x, blockId_y, tid_x, tid_y, safebyte ) ;
+
     //tile_byteStream[ threadIdx.y * subframe_width + threadIdx.x ] = safebyte ;
 
+    //if(blockId_x == 2 && blockId_y == 2) {
     //if( blockId_x == 0 && blockId_y == 0 ){
     if (  tid_x == 0 || ( !(tid_x & 1) ) ) {
 
@@ -1713,6 +1619,9 @@ __global__ void invdiffusionKernelv7( unsigned char *input, unsigned char *outpu
                 int base = i * 3 ;
             
                 unsigned char b_byte_B = tile_byteStream[ i ].x ;
+
+                //printf(" %d \n", blockId_x, blockId_y, tid_x, tid_y, b_byte_B ) ;
+
                 //unsigned char b_byte_B = ((unsigned char*)&tile_byteStream[0])[i] ;
 
                 //if( blockId_x == 0 && blockId_y == 0){ // debugging for block (0,0)
@@ -1733,18 +1642,15 @@ __global__ void invdiffusionKernelv7( unsigned char *input, unsigned char *outpu
     output[ (gy * width + gx) * NUM_CHANNELS + 2  ] =  tile2[ (threadIdx.y * subframe_width + threadIdx.x) * NUM_CHANNELS + 2] ;    
     //}
 }
-
 __global__ void diffusionKernelv7 ( unsigned char *input, unsigned char *output, unsigned char *byte_stream, int width, int height, int subframe_height, int subframe_width, int performInverseDiffusion, unsigned char * d_sd_array, int round ) {
 
     int blockId_x = blockIdx.x ;
     int blockId_y = blockIdx.y ;
     int tid_x = threadIdx.x ;
     int tid_y = threadIdx.y ;
-    int channelOffset = blockId_x / gridDim.x ;
 
     int gx = blockIdx.x * subframe_width + threadIdx.x ;
     int gy = blockIdx.y * subframe_height + threadIdx.y ;
-
     int index = ( gy * width + gx ) * NUM_CHANNELS ;
 
     int blockId = blockIdx.y * gridDim.x + blockIdx.x ;
@@ -1753,11 +1659,9 @@ __global__ void diffusionKernelv7 ( unsigned char *input, unsigned char *output,
 
     extern __shared__ unsigned char tilediffv7[] ;
 
-    //__shared__ unsigned char sd[8];
-
     unsigned char *tile1 = tilediffv7 ;
     unsigned char *tile2 = tile1 + subframe_height * subframe_width * NUM_CHANNELS ;
-    //unsigned char *tile_byteStream = reinterpret_cast<uchar3*>(tile2) + subframe_height * subframe_width ;
+    //unsigned char *tile_byteStream = tile2 + subframe_height * subframe_width ;
     uchar3 *tile_byteStream = reinterpret_cast<uchar3*>(tile2) + subframe_height * subframe_width ;
     //uchar3 *tile_byteStream = reinterpret_cast<uchar3*>(tile2) + 48 ;
 
@@ -1774,31 +1678,6 @@ __global__ void diffusionKernelv7 ( unsigned char *input, unsigned char *output,
     uchar3 safe3bytes = reinterpret_cast<uchar3*>(byte_stream)[ globalIndex ] ;
     tile_byteStream[  threadIdx.y * subframe_width + threadIdx.x ] = safe3bytes ; 
 
-    //unsigned char safebyte = (byte_stream)[ globalIndex ];
-    //tile_byteStream[  threadIdx.y * subframe_width + threadIdx.x ] = safebyte ;
-
-   // uchar3 safebyte = (&tile_byteStream[0])[gy * width + gx] ;
-
-
-    /*if( blockId_x == 0 && blockId_y == 0 ){
-        printf( "\n%d, %d, %d ", safe3bytes.x, safe3bytes.y, safe3bytes.z ) ;  
-    } */
-
-    /*if ( blockId_x == 1 && blockId_y == 0 ){
-        printf("\n") ;
-        printf( "\n%d, %d, %d ", safe3bytes.x, safe3bytes.y, safe3bytes.z ) ;
-    } */
-
-    /*unsigned char safebyte = byte_stream[ gy * width + gx ] ;
-    tile_byteStream[ threadIdx.y * subframe_height + threadIdx.x ] = safebyte ; */
-
-    //channelOffset = 0 ; //focusing on the blue channel for now just for debugging purposes ....
-
-    //__shared__ unsigned char diffused_subframe[TOTALPIXELSSUBFRAME]; // allocating shared memory
-
-    //if (tid == 0 ){
-
-    //if ( blockId_x == 0 && blockId_y == 0  ) {
     if(  tid_x == 0 || (!(tid_x & 1)) ) {
 
         //if ( tid_y == 0 || tid_y == 2 || tid_y == 4 || tid_y == 6 ) {
@@ -1806,87 +1685,57 @@ __global__ void diffusionKernelv7 ( unsigned char *input, unsigned char *output,
             unsigned char sd = d_sd_array[ (blockId_y * gridDim.x) + blockId_x  ];
 
             if( round == 1 ) { //all rounds use the same set of sd values
-
-                // the diffusion seed of a specific subframe i is the last pixel value of the subframe( (i+1) mod n ) (n being number of assitant threads in the article (n being nummber of blocs in my case ))
             
                 int sd_block_x = (blockId_x + 1) % gridDim.x ; //this is the y_coordinate of the selected pixel if we imagine the frame values in 2d space!!! if want to get the position in the linearized frame we must multiply by the width 
 
-                //printf("\n sd_block X : = %d \n", sd_block_x) ;
                 int sd_block_y = ( blockId_y + ( (blockId_x + 1) / gridDim.x ) ) % gridDim.y ;
 
-                //printf( "\n block (%d, %d) has sd block Y : = (%d, %d) \n ", blockId_x, blockId_y, sd_block_x, sd_block_y );
-
                 int sd_coordinate = (( sd_block_y * width * subframe_height ) + 
-                                ( sd_block_x * subframe_width ) + 
-                                ( subframe_height - 1 ) * width + subframe_width - 1) * NUM_CHANNELS ;
+                                     ( sd_block_x * subframe_width ) + 
+                                     ( subframe_height - 1 ) * width + subframe_width - 1) * NUM_CHANNELS ;
                 
-                //printf("\n sd coordinate: %d\n ", sd_coordinate );
-
-                //printf("\nblock (%d, %d) will pick its sd from this location: %d, which is %d\n", blockId_x, blockId_y, sd_coordinate, input[sd_coordinate]);
-        
                 sd = input[ sd_coordinate ] ;
                 d_sd_array[ (blockId_y * gridDim.x) + blockId_x  ] = sd ; 
 
-                //printf("%d ", sd[tid_y]);
-
-                //sd = tile1[ 143 ];
             }
 
-       __syncthreads();
-        
-        //int total = 2 ;
-
-        //printf("total : %d \n", total );
+        __syncthreads();
     
-        unsigned char b_byte = tile_byteStream[ tid_y * subframe_width + tid_x ].x ;
+        unsigned char b_byte_B = tile_byteStream[ tid_y * subframe_width + tid_x ].x ;
         //unsigned char b_byte_G = tile_byteStream[ 0 ].y ;
         //unsigned char b_byte_R = tile_byteStream[ 0 ].z ;
+
+        //unsigned char b_byte = tile_byteStream[ tid_y * subframe_width + tid_x ] ;
+
+        //printf(" block(%d, %d) , thread (%d, %d) prende safebyte %d \n", blockId_x, blockId_y, tid_x, tid_y, b_byte ) ;
     
         unsigned char in_B_component = tile1[ ( tid_y * subframe_width + tid_x ) * 3 + 0 ] ;
         unsigned char in_G_component = tile1[ ( tid_y * subframe_width + tid_x ) * 3 + 1 ] ;
         unsigned char in_R_component = tile1[ ( tid_y * subframe_width + tid_x ) * 3 + 2 ] ;
-
-        //if( tid_y == 0 ){
-        //    for( int i = 0 ; i< 2; i++){
-        //        for( int j = 0 ; j< 6; j++){
-        //            printf(  "  %d  ", (int) tile1[i * 6 + j ]);
-        //        }
-        //    }printf("\n");
-        //}
     
-        tile2[ ( tid_y * subframe_width + tid_x ) * 3 + 0 ] = b_byte ^ ( in_B_component + b_byte ) ^ sd ; 
-        tile2[ ( tid_y * subframe_width + tid_x ) * 3 + 1 ] = b_byte ^ ( in_G_component + b_byte ) ^ sd ; 
-        tile2[ ( tid_y * subframe_width + tid_x ) * 3 + 2 ] = b_byte ^ ( in_R_component + b_byte ) ^ sd ;
-
-        //printf(" thread y id: %d, b_byte=%d xor (in_B_component= %d + b_byte) xor sd=%d = %d \n", tid_y, b_byte, in_B_component, sd, tile2[ tid_y * subframe_width + 0 ] );
-        //printf(" thread y id: %d, b_byte=%d xor (in_G_component= %d + b_byte) xor sd=%d = %d \n", tid_y, b_byte, in_G_component, sd, tile2[ tid_y * subframe_width + 1 ] );
-        //printf(" thread y id: %d, b_byte=%d xor (in_R_component= %d + b_byte) xor sd=%d = %d \n", tid_y, b_byte, in_R_component, sd, tile2[ tid_y * subframe_width + 2 ] );
+        tile2[ ( tid_y * subframe_width + tid_x ) * 3 + 0 ] = b_byte_B ^ ( in_B_component + b_byte_B ) ^ sd ; 
+        tile2[ ( tid_y * subframe_width + tid_x ) * 3 + 1 ] = b_byte_B ^ ( in_G_component + b_byte_B ) ^ sd ; 
+        tile2[ ( tid_y * subframe_width + tid_x ) * 3 + 2 ] = b_byte_B ^ ( in_R_component + b_byte_B ) ^ sd ;
 
         __syncthreads();
 
-            int  i = tid_y * subframe_width + tid_x + 1;  
+        int  i = tid_y * subframe_width + tid_x + 1;  
 
-            int base = i * 3;
+        int base = i * 3;
         
-            b_byte = tile_byteStream[ i ].x ;
+        b_byte_B = tile_byteStream[ i ].x ;
 
-            //b_byte = ((unsigned char*)&tile_byteStream[0])[i] ;
+        //b_byte = tile_byteStream[ i ] ;
 
-            /*if( blockId_x == 0 && blockId_y == 0 ){
-                printf( "%d ", b_byte ) ;
-            }*/
+        //printf(" block(%d, %d) , thread (%d, %d) prende safebyte %d \n", blockId_x, blockId_y, tid_x, tid_y, b_byte ) ;
 
-            /*if( blockId_x == 0 && blockId_y == 0){ // debugging for block (0,0)
-                printf(" %d ", b_byte ) ;   
-            }*/
+        in_B_component = tile1[ base + 0 ] ; 
+        in_G_component = tile1[ base + 1 ] ; 
+        in_R_component = tile1[ base + 2 ] ; 
 
-            in_B_component = tile1[ base + 0 ] ; 
-            in_G_component = tile1[ base + 1 ] ; 
-            in_R_component = tile1[ base + 2 ] ; 
-
-            tile2[ base + 0 ] = b_byte ^ ( in_B_component + b_byte ) ^ tile2[ base - 1 ] ;
-            tile2[ base + 1 ] = b_byte ^ ( in_G_component + b_byte ) ^ tile2[ base + 0 ] ;
-            tile2[ base + 2 ] = b_byte ^ ( in_R_component + b_byte ) ^ tile2[ base + 1 ] ;                    
+        tile2[ base + 0 ] = b_byte_B ^ ( in_B_component + b_byte_B ) ^ tile2[ base - 1 ] ;
+        tile2[ base + 1 ] = b_byte_B ^ ( in_G_component + b_byte_B ) ^ tile2[ base + 0 ] ;
+        tile2[ base + 2 ] = b_byte_B ^ ( in_R_component + b_byte_B ) ^ tile2[ base + 1 ] ;                    
 
         }
     //} 
@@ -1896,87 +1745,30 @@ __global__ void diffusionKernelv7 ( unsigned char *input, unsigned char *output,
     output[ index + 0 ] =  tile2[ (threadIdx.y * subframe_width + threadIdx.x) * NUM_CHANNELS + 0 ] ;
     output[ index + 1 ] =  tile2[ (threadIdx.y * subframe_width + threadIdx.x) * NUM_CHANNELS + 1 ] ;
     output[ index + 2 ] =  tile2[ (threadIdx.y * subframe_width + threadIdx.x) * NUM_CHANNELS + 2 ] ;
+   
     //}
 
 }
 
+void diffusionOpWrapper( unsigned char *d_byteStream, unsigned char * d_input, unsigned char *input, unsigned char * d_output, unsigned char *output, int width, int height, int subframe_height, int subframe_width, int performInverseDiffusion,  unsigned char *d_sd_array, cudaStream_t stream1 ) {
 
-void diffusionOpWrapper( unsigned char *input, unsigned char *output, unsigned char *byteStreamFinal, int width, int height, int subframe_height, int subframe_width, int performInverseDiffusion, std::vector<unsigned char>& sd_array) {
-
-    const int total_pixels = width * height ;
-    const int num_subframesXdir = width / subframe_width ;
-    const int num_subframesYdir = height / subframe_height ;
-
-    //printf("\n num_subframesXdir : %d\n", num_subframesXdir);
-    //printf("\n num_subframesYdir : %d\n", num_subframesYdir);
-    //printf("\n total pixels: %d\n", total_pixels ) ;
-
-    unsigned char *d_input ;
-    unsigned char *d_output ;
-    unsigned char *d_byteStream ; // space which contains all of the byte streams that have to be applied to all of the subframes...
-
-    static unsigned char *d_sd_array = nullptr;
+    const int total_pixels = width * height ;  // 921600, 960x960
+    const int num_subframesXdir = width / subframe_width ; // 80, 960x960
+    const int num_subframesYdir = height / subframe_height ; // 120, 960x960
 
     static int round = 0 ;
 
-    if(round == 0){
-        cudaMalloc( (void **) &d_sd_array, num_subframesXdir * num_subframesYdir * sizeof( unsigned char) ) ;
-        //printf("round is %d\n", round) ;
-    }
+    ( performInverseDiffusion == 0 ) ? round ++ : round -- ;
 
-    (performInverseDiffusion == 0 ) ? round ++ : round -- ;
+    //cudaMemcpy(d_input, input, total_pixels * NUM_CHANNELS * sizeof( unsigned char ), cudaMemcpyHostToDevice) ;
 
-    //printf( "round now: %d\n", round) ;
-    //printf("total_pixels: %d\n", total_pixels) ;
-    //printf("num_subframes: %d\n", num_subframes) ;
-
-    cudaMalloc(&d_input, total_pixels * NUM_CHANNELS * sizeof( unsigned char ) ) ;
-    cudaMalloc(&d_output, total_pixels * NUM_CHANNELS * sizeof( unsigned char ) ) ;
-    cudaMalloc(&d_byteStream, total_pixels * NUM_CHANNELS * sizeof( unsigned char ) ) ;
-    //cudaMalloc(&d_byteStream, total_pixels * sizeof( unsigned char ) ) ;
-
-    //printf("numSubframesXdir = %d, numSubframesYdir= %d \n", num_subframesXdir, num_subframesYdir ) ;
-
-    //if(performInverseDiffusion == 0) {
-    //    printf("\n input image encoded in memory : \n");
-    //    for(int i = 0; i< 4; i++){
-    //        for( int j = 0; j< 12; j++){
-    //            printf("%d ", (int)input[i*12+j]);
-    //        }   
-    //    printf("\n");
-    //    }
-    //    printf("\n");
-
-    //    printf("\n byteStream for diffusion : \n");
-    //    for(int i = 0; i< 4; i++){
-    //        for( int j = 0; j< 12; j++){
-    //           printf("%d ", (int)byteStreamFinal[i*12+j]);
-    //        }
-    //        printf("\n");
-    //    }
-    //    printf("\n");    
-    //}
-
-    cudaMemcpy(d_input, input, total_pixels * NUM_CHANNELS * sizeof( unsigned char ), cudaMemcpyHostToDevice) ;
-    printf(" ... \n ") ;
-    cudaMemcpy(d_byteStream, byteStreamFinal, total_pixels * NUM_CHANNELS * sizeof( unsigned char), cudaMemcpyHostToDevice) ;
-    //cudaMemcpy(d_byteStream, byteStreamFinal, total_pixels * sizeof( unsigned char), cudaMemcpyHostToDevice) ;
-
-    if( performInverseDiffusion == 1 && round == (ROUNDS - 1) ) {
-        /*printf("sd values used for inverse diffusion\n");
+    //if( performInverseDiffusion == 1 && round == (ROUNDS - 1) ) {
+        /*printf("sd values used for inverse diffusion\n") ;
         for(int i = 0; i < sd_array.size(); i ++){
             printf("% d", sd_array[i]); 
         }*/
-        cudaMemcpy( d_sd_array, sd_array.data(), num_subframesXdir * num_subframesYdir * sizeof( unsigned char ) , cudaMemcpyHostToDevice ) ;
-    }
-
-    
-
-    //printf(".......");
-
-    //for now exploiting the parallelism just at the block level ... and each block will run the algorithm serially...
-    //will have to modify when optimizing.... either try to find another algorithm for diffusion different from the paper online which is parallelizable....
-    //..or stick to this and just try to obtain the correct configurations of blocks which do make obtain the best performance... can see that while profiling i believe
+    //    cudaMemcpy( d_sd_array, sd_array.data(), num_subframesXdir * num_subframesYdir * sizeof( unsigned char ) , cudaMemcpyHostToDevice ) ;
+    //}
 
     dim3 blocksPerGrid( num_subframesXdir , num_subframesYdir ) ;
     //dim3 threadsPerBlock(154,6) ; // maximum number of threads per block that can be allocated. // same way as confusion
@@ -1986,31 +1778,28 @@ void diffusionOpWrapper( unsigned char *input, unsigned char *output, unsigned c
     //size_t sharedMemPerBlock =  ( 2 * subframe_height * subframe_width * NUM_CHANNELS * sizeof( unsigned char ) ) + ( subframe_height * subframe_width * sizeof( unsigned char) );
 
     if( performInverseDiffusion == 0 ) { // launch diffusion kernel
-        diffusionKernelv7 <<< blocksPerGrid, threadsPerBlock, sharedMemPerBlock >>> ( d_input, d_output, d_byteStream, width, height, subframe_height, subframe_width, performInverseDiffusion, d_sd_array, round );
-    cudaDeviceSynchronize() ;
+        //printf("executing diffusion Kernel...\n") ;
+        diffusionKernelv7 <<< blocksPerGrid, threadsPerBlock, sharedMemPerBlock, stream1 >>> ( d_input, d_output, d_byteStream, width, height, subframe_height, subframe_width, performInverseDiffusion, d_sd_array, round );
+    //cudaDeviceSynchronize() ;
     } else { // launch inverse diffusion kernel 
-        invdiffusionKernelv7 <<< blocksPerGrid, threadsPerBlock, sharedMemPerBlock >>> ( d_input, d_output, d_byteStream, width, height, subframe_height, subframe_width, performInverseDiffusion, d_sd_array );
-    cudaDeviceSynchronize() ;
+        invdiffusionKernelv7 <<< blocksPerGrid, threadsPerBlock, sharedMemPerBlock, stream1 >>> ( d_input, d_output, d_byteStream, width, height, subframe_height, subframe_width, performInverseDiffusion, d_sd_array );
+    //cudaDeviceSynchronize() ;
     } 
     
-    cudaMemcpy( output, d_output, total_pixels * NUM_CHANNELS * sizeof( unsigned char), cudaMemcpyDeviceToHost );
+    //cudaMemcpy( output, d_output, total_pixels * NUM_CHANNELS * sizeof( unsigned char), cudaMemcpyDeviceToHost );
     
-    if( performInverseDiffusion == 0  && round == 1 ) {
-        sd_array.resize( num_subframesXdir * num_subframesYdir ) ;
-        cudaMemcpy( sd_array.data(), d_sd_array,  num_subframesXdir * num_subframesYdir * sizeof(unsigned char) , cudaMemcpyDeviceToHost ) ;
+    //if( performInverseDiffusion == 0  && round == 1 ) {
+        //sd_array.resize( num_subframesXdir * num_subframesYdir ) ;
+        //cudaMemcpy( sd_array.data(), d_sd_array,  num_subframesXdir * num_subframesYdir * sizeof(unsigned char) , cudaMemcpyDeviceToHost ) ;
         //printf("sd array size: %d ", sd_array.size());
         //for(int i = 0; i < sd_array.size(); i ++){
         //    printf(" %d ", sd_array[i]);
         //} 
-    }
-
-    cudaFree(d_input) ;
-    cudaFree(d_byteStream) ;
-    cudaFree(d_output) ;
+    //}
     
-    if(round == 0){
-        cudaFree(d_sd_array) ;
-    }
+    //if(round == 0) {
+    //    cudaFree(d_sd_array) ;
+    //}
 }
 
 __global__ void coalescedLoadKernel(unsigned char * input, unsigned char * output, int width, int height) {

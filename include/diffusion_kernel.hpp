@@ -5,7 +5,19 @@
 #include <opencv2/opencv.hpp> 
 #include <cstdint>
 
-void diffusionOpWrapper( unsigned char *input, unsigned char *output, unsigned char *byteStreamFinal, int width, int height, int subframe_height, int subframe_width, int performInverseDiffusion, std::vector<unsigned char>& sd_array) ;
+void diffusionOpWrapper( unsigned char *d_byteStream, 
+                         unsigned char *d_input, 
+                         unsigned char *input, 
+                         unsigned char *d_output, 
+                         unsigned char *output,  
+                         int width, 
+                         int height, 
+                         int subframe_height, 
+                         int subframe_width, 
+                         int performInverseDiffusion, 
+                         unsigned char *d_sd_array,
+                         cudaStream_t stream1 ) ;
+
 void runCoalescedLoadWrapper( unsigned char *input, unsigned char *output , int width, int height ) ;
 
 #endif 

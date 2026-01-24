@@ -10,208 +10,279 @@
 #include <chrono>
 #include "../include/utils.hpp"
 
-#define ROUNDS 1
+#define ROUNDS 5
 #define NUM_CHANNELS 3 // number RGB channels
 
 int main () {
 
-    //int device = 0;  // use device 0 (default)
-    //cudaDeviceProp prop;
-    //cudaError_t status = cudaGetDeviceProperties(&prop, device);
+//---------------------------------------------DEFINING POINTER FOR inDEVICE ARRAYS -------------------------------------------------------
 
-    //printf("GPU Name: %s\n", prop.name);
-    //printf("Number of Streaming Multiprocessors: %d\n", prop.multiProcessorCount);
-
-    //std::cout << "Max threads per block: " << maxThreadsPerBlock << std::endl;
-    //std::cout << "Max grid dimensions: (" << maxGridDimX << ", "<< maxGridDimY << ", " << maxGridDimZ << ")" << std::endl;
-
-    //load the Frame (grayScale mode for now)
-    cv::Mat inputFrame = cv::imread("testFrames/link960x960.png", cv::IMREAD_COLOR);
-    //cv::Mat inputFrame = cv::imread("testFrames/shrekAndDonkey768x768.png", cv::IMREAD_COLOR);
-    //cv::Mat inputFrame = cv::imread("testFrames/ultraSmall4by4.png", cv::IMREAD_COLOR);
-    //cv::Mat inputFrame = cv::imread("testFrames/weird8by8.png", cv::IMREAD_COLOR);
-    //cv::Mat inputFrame = cv::imread("testFrames/weird8by8.png", cv::IMREAD_COLOR);
-
-    //quick check if frame exists
-    if( inputFrame.empty() ) {
-        std::cerr << "Failed to load Frame!\n" ;
-        return -1 ;
-    }
+    std::vector<unsigned char> byteStreamFinal ; //byteStreamFinal array exists on the host only if you want to print for debug purposes.. else it lives inside the device 
     
-    int width = inputFrame.cols ;
-    int height = inputFrame.rows ;
-    //int subFrameHeight = 6 ; // keeping the height of the subframe as fixed parameter for now to compute the num of subframes to allocate
-
+    unsigned char *d_values4ByteStream_1 ; // first byte array containing all the byte streams of all the subframes.
+    unsigned char *d_values4ByteStream_2 ; // second byte array containing all the byte streams of all the subframes.
+    unsigned char *d_byteStreamFinal ; //final byte array ( which is a "xored" version of the first and second byte arrats ) containing all the byte arrays of all the subframes.
+    
+    unsigned char *d_sd_array ; 
+    unsigned char *d_input[2] ; //  array containing the encoding of all the frame itself before the confusion/diffusion
+    unsigned char *d_output[2] ; // array containing the encoding of all th13.325ms e frame itself after  the confusion/diffusion
+    
+    double *d_keysAndControlPs ; //array containing the control parameters and keys going to all the subframes.
+    
+    double* keysAndControlPsPinned = nullptr;
+    unsigned char* h_frame_pinned[2] ;  //containing frame iamge in host 
+    
+    int width = 960 ; //width of frame
+    int height = 960 ; //height of frame
+    int PRBGAsAmount = (width * height) / ( 6 ) ; // one prbga iteration produces 6 bytes.
+    
     int subframeWidth = 12 ;
     int subframeHeight = 8 ;
-
-    //printing all the pixel encodings of the frame.
-
-    /*printf("\nprinting all the pixel encodings of the frame: \n");
-    for (int y = 0; y < inputFrame.rows; y++) {
-        for (int x = 0; x < inputFrame.cols; x++) {
-            cv::Vec3b pixel = inputFrame.at<cv::Vec3b>(x, y);  // B, G, R
-            std::cout << "Pixel (" << x << "," << y << "): "
-                      << "B=" << (int)pixel[0] << " "
-                      << "G=" << (int)pixel[1] << " "
-                      << "R=" << (int)pixel[2] << std::endl;    
-        } 
-    } */
-
-
-    //printing the encoding values that should be related to the sd that should be chosen for the subframes during diffusion:
-
-    /*printf("\npixel values related to the sd values that need to be chosen in diffusion: \n");
-    for (int y = 0; y < inputFrame.rows; y++) {
-        for (int x = 0; x < inputFrame.cols; x++) {
-            if( ( (x+1) % subframeWidth == 0 ) && ( (y + 1 ) % subframeHeight == 0 ) ) {
-                cv::Vec3b pixel = inputFrame.at<cv::Vec3b>(x, y);  // B, G, R
-                std::cout << "Pixel (" << x << "," << y << "): "
-                          << "B=" << (int)pixel[0] << " "
-                          << "G=" << (int)pixel[1] << " "
-                          << "R=" << (int)pixel[2] << std::endl;    
-            }
-        }
-    }*/
-    
+    int PRBGAiterations =  ( int )ceilf( ( ( float )( subframeHeight * subframeWidth * NUM_CHANNELS ) / 6.0 ) ) / 16 ; //( ( subframeWidth * subframeHeight ) / 6 ) + 1 ; 
     int numSubFrames = ( width * height ) / ( subframeHeight * subframeWidth ) ;
 
-    //printf ("width : %d, height: %d \n", width, height) ;
-    //printf (" number of subframes: %d \n", numSubFrames ) ;
+    int frameCount = 0 ;
+
+    cv::Mat frame;
+
+    cudaStream_t stream1;
+    cudaStreamCreate(&stream1);  
+
+    cudaEvent_t frameReady[2]; //for double buffering purposes
+    cudaEventCreate(&frameReady[0]);
+    cudaEventCreate(&frameReady[1]);
+
+    for (int i = 0; i < 2; i++) {
+
+        // Host pinned buffer (CPU side)
+        cudaMallocHost(&h_frame_pinned[i], width * height * NUM_CHANNELS * sizeof(unsigned char) );
+
+        // Device buffers (GPU side)
+        cudaMalloc(&d_input[i],  width * height * NUM_CHANNELS * sizeof(unsigned char) );
+        cudaMalloc(&d_output[i], width * height * NUM_CHANNELS * sizeof(unsigned char) );
+    }
+
+    //cudaMallocHost(&h_frame_pinned, width * height * NUM_CHANNELS * sizeof( unsigned char )) ;
+    cudaMallocHost(&keysAndControlPsPinned, ( 2 * PRBGAsAmount + 1 ) * sizeof( double ) ); //pinned memory
+
+    PRBGA_init( 2 * PRBGAsAmount, //allocation function
+            &d_keysAndControlPs, 
+            &d_values4ByteStream_1, 
+            &d_values4ByteStream_2, 
+            &d_byteStreamFinal, 
+            PRBGAiterations ) ;
+
+    device_frame_allocation ( width * height, 
+                              &d_sd_array, 
+                              numSubFrames ) ;
+
+    cv::VideoCapture cap("testVideos/test_960x960_20fps.mp4") ;
+    //cv::VideoCapture cap("testVideos/test_768x768_20fps.mp4") ;
+
+    if (!cap.isOpened()) {
+        std::cerr << "Cannot open video file\n";
+        return -1;
+    }
+
+    double totalFrames = cap.get(cv::CAP_PROP_FRAME_COUNT);
+    std::cout << "Total frames = " << totalFrames << std::endl;
+
+    cv::VideoWriter writer( "testResults/encrypted_output.mp4", cv::VideoWriter::fourcc('a','v','c','1'), 20, cv::Size(width, height), true );
+
+    if (!writer.isOpened()) {
+        std::cerr << "ERROR: Could not open VideoWriter\n";
+        return -1;
+    }
+
+//--------------------------------------------LOADING INPUT FRAME -------------------------------------------------------------------------
+
+    //print_frameEncoding(inputFrame) ; // for debug purposes 
 
     double globalKey = 0.223456 ; //used for PRBGmain initialization. is a double value (0,0.5)
     double p = 0.3 ; //control parameter for the PRBGmain . is a value in (0,0.5)
-
-    int numKeys = numSubFrames;  /* each iteration of the PRBG main is a resultant input seed...
-                        ...for the future subsequent PRBGas as described by article
-                        considering a 768 x 768 Frame.
-                        considering that 128 blocks (equivalent to the assistant threads in the paper) will manage 128 subframes
-                        then we have 128 6x768 subframes.
-                        a particular diffusion operation on a specifc subframe involves 6*768 pixels.
-                        in particular, each of the 6* 768 pixels has a corresponding byte associated for diffusion operation.
-                        so for a subframe, 768* 6 bytes are asssociated to it.
-                        the article says that one result of a particular PRBGa will form 6 bytes of the bytestream used in diffusion in a particular subframe..
-                        hence, the amount of outputs of the PRBGA is 768 * 6 / 6 = 768.
-                        the byte stream of a specific subframe is that of dimension 768*6 .
-                        */
-                       
-    const int PRBGAiterations =  ( int )ceilf( ( ( float )( subframeHeight * subframeWidth  ) / 6.0 ) ) / 16 ; //( ( subframeWidth * subframeHeight ) / 6 ) + 1 ; 
-    //const int PRBGAiterations =  ( int )ceilf( ( ( float )( subframeHeight * subframeWidth ) / 6.0 ) ) ;
-
-    //printf( "number of total keys for all the PRBGa components: %d\n", numKeys ) ;
-    //printf( "prbga iterations for the singular prbga: %d\n", PRBGAiterations ) ;
+    int numKeys = numSubFrames ;           
     uint64_t sc ;
 
-    auto start = std::chrono::high_resolution_clock::now() ;
-
-    //generating the keys and control parameters that will be fed to future PRBGas
-    std::vector<double> keysAndControlPs = generatePRBGMainKeysv2( globalKey, p, 2*numKeys*16 + 1 , &sc ) ; // +1 for sc generation
+//--------------------------------------------CREATING PRBGMAIN KEYS AND MEASURING ITS EXECUTION TIME------------------------------------
     
-    auto end = std::chrono::high_resolution_clock::now();
+    //printMainKeys( keysAndControlPsPinned, 2*PRBGAsAmount ); //for debug purposes. prints controlPs and Keys later used in PRBGAs
 
-    std::chrono::duration<double, std::milli> elapsed = end - start ;
-    std::cout << "Time taken for PRBG main: " << elapsed.count() << " ms\n" ; // this included to understand how long the main prbg takes
+//--------------------------------------------MEMORY ALLOCATION FOR inDEVICE ARRAYS -------------------------------------------------------
 
-    //printf("the confusion seed: %d\n", sc);
-    std::vector<unsigned char> byteStreamFinal, output1, output2, sd_array ;
-    double *d_keysAndControlPs ;
-    unsigned char *d_values4ByteStream_1 ;
-    unsigned char *d_values4ByteStream_2 ;
-    unsigned char *d_byteStreamFinal ;
+    auto t0 = std::chrono::high_resolution_clock::now();
+
+    //cap.read(frame)
+    while (  frameCount < totalFrames ) {
+
+    frame = cv::Mat(height, width, CV_8UC3, cv::Scalar(128,128,128));
+
+    int cur  = frameCount % 2;          // GPU writes here
+    int prev = (frameCount + 1) % 2;    // CPU reads here
+
+    generatePRBGMainKeysv3Pinned(globalKey, p, 2 * PRBGAsAmount + 1, &sc, keysAndControlPsPinned ); //runs on CPU
     
-    //now that the parameter needed to initialize the various PRBGAs are ready, we can launch the wrapper to the kernel dealing with beginning PRBGAs execution
+    memcpy( h_frame_pinned[cur], frame.data, width * height * NUM_CHANNELS ); // copy from paged to pinned 
     
-    cudaFree(0);
-    PRBGAinit( keysAndControlPs.size(), &d_keysAndControlPs, &d_values4ByteStream_1, &d_values4ByteStream_2, &d_byteStreamFinal, PRBGAiterations ) ;
-    
-    PRBGAandByteStreamGenWrapper( d_keysAndControlPs, keysAndControlPs, d_values4ByteStream_1, d_values4ByteStream_2, d_byteStreamFinal, byteStreamFinal, output1, output2, PRBGAiterations, subframeHeight, subframeWidth, width, height ) ;
+    PRBGAandByteStreamGenWrapper( d_keysAndControlPs, 
+                                  keysAndControlPsPinned,
+                                  (2 * PRBGAsAmount), 
+                                  d_values4ByteStream_1, 
+                                  d_values4ByteStream_2, 
+                                  d_byteStreamFinal, 
+                                  byteStreamFinal,  
+                                  PRBGAiterations, 
+                                  subframeHeight, 
+                                  subframeWidth, 
+                                  width, 
+                                  height,
+                                  stream1 ) ;
 
-    //print_ByteStreamFinal( byteStreamFinal, subframeHeight, subframeWidth); //debug purposes
+    //print_ByteStreamFinal( byteStreamFinal, subframeHeight, subframeWidth, PRBGAiterations ); //debug purposes (works if cudamcpy DtH is uncommented activated in prbga wrapper)
+    //6.5 ms
 
-    // To access result for block 0 (contains the values generated by the PRBGA assigned to block 0), for example:
-
-    cv::Mat current = inputFrame.clone() ;
-    std::vector <unsigned char> buffer( width * height * NUM_CHANNELS ) ; // considering the rgb image , the image information is thrice that of the greyscale
-    
     int performInverseConfusion = 0 ; 
     int performInverseDiffusion = 0 ; 
-    
-    //std::vector <unsigned char> buffer1( width * height * 4 ) ;
-    //cv::Mat imgRGBA;
-    //cv::cvtColor(inputFrame, imgRGBA, cv::COLOR_BGR2RGBA);
-    //runCoalescedLoadWrapper(imgRGBA.data, buffer1.data(), width, height );
-    //runCoalescedLoadWrapper( inputFrame.data, buffer.data(), width, height ) ;
 
-    for( int i = 0; i< ROUNDS; i ++){
+//-------------------------------------ENCRYPTION ROUNDS DIFFUSION AND CONFUSION--------------------------------------------------------------------
+
+    cudaMemcpyAsync(d_input[cur], h_frame_pinned[cur], width * height * NUM_CHANNELS * sizeof( unsigned char ), cudaMemcpyHostToDevice, stream1) ;
+
+    for( int i = 0; i < ROUNDS; i ++) {
     
         //CONFUSION
-        /*confusionOpWrapper(current.data, buffer.data(), width, height, subframeHeight, sc, performInverseConfusion); 
-        current = cv::Mat(height, width, CV_8UC3, buffer.data()).clone();
-        std::string filenameConfusion = "testResults/afterConfusion" + std::to_string(i) +".png" ;
-        cv::imwrite(filenameConfusion, current ); */
-    
+        confusionOpWrapper(frame.data, d_input[cur], frame.data, d_output[cur], width, height, subframeHeight, sc, performInverseConfusion, stream1 ); 
+        std::swap(d_input[cur], d_output[cur]);
+        
         //DIFFUSION
+        diffusionOpWrapper( d_byteStreamFinal, d_input[cur] , frame.data, d_output[cur], frame.data, width, height, subframeHeight, subframeWidth, performInverseDiffusion, d_sd_array, stream1 ) ;
+        std::swap(d_input[cur], d_output[cur]) ;
+    
+    } 
 
-        /*diffusionOpWrapper( current.data, buffer.data(), byteStreamFinal.data(), width, height, subframeHeight, subframeWidth, performInverseDiffusion, sd_array ) ;
-        current = cv::Mat(height, width, CV_8UC3, buffer.data()).clone();
-        std::string filenameDiffusion = "testResults/afterDiffusion" + std::to_string(i) +".png" ;
-        cv::imwrite(filenameDiffusion, current ) ;  */
-
-        /*
-        printf("\nsd array size: %d\n", sd_array.size() ) ;
-        printf("\nsd array: \n") ; 
-        for( int i = 0; i < sd_array.size(); i ++) {
-            printf("sd[%d] = %d\n", i, sd_array[i] ) ;  
-        }
-        */
+    cudaMemcpyAsync(h_frame_pinned[cur], d_input[cur], width * height  * NUM_CHANNELS * sizeof( unsigned char ), cudaMemcpyDeviceToHost, stream1);
+    cudaEventRecord(frameReady[cur], stream1);    
+    
+    if (frameCount > 0) {
+        cudaEventSynchronize(frameReady[prev]);   // wait ONLY for previous buffer
+        //auto start = std::chrono::high_resolution_clock::now() ;
+        cv::Mat encryptedFrame(height, width, CV_8UC3, h_frame_pinned[prev]);
+        //writer.write(encryptedFrame);
+        //auto end = std::chrono::high_resolution_clock::now();
+        //std::chrono::duration<double, std::milli> elapsed = end - start ;
+        //std::cout << "Time taken for PRBG main: " << elapsed.count() << " ms\n" ;
     }
 
-    performInverseDiffusion = 1;
-    performInverseConfusion = 1; // doing the inverse of the confusiion to see if we are able to obtain the original image from the confused one.
+    //cv::Mat encryptedFrame(height, width, CV_8UC3, h_frame_pinned) ;
+    //writer.write(encryptedFrame) ;
 
-    for( int i = ROUNDS-1 ; i >=0; i --) {
+    /*if( frameCount % 100 == 0 ) {
+         
+        //cudaStreamSynchronize(stream); 
+        //cudaDeviceSynchronize();  
+        std::string filenameConfusion = "testResults/afterEncryption" + std::to_string(frameCount) + ".png" ;  //final encoded frame after ALL rounds of confusion and diffusion.
+        cv::Mat encryptedMat(height, width, CV_8UC3, h_frame_pinned);
+        cv::imwrite(filenameConfusion, encryptedMat);   
+    }*/
+
+    performInverseDiffusion = 1 ;
+    performInverseConfusion = 1 ; // doing the inverse of the confusiion to see if we are able to obtain the original image from the confused one.
+
+    /*for( int i = ROUNDS-1 ; i >=0; i --) {
 
         //INVERSE OF DIFFUSION
-        //here performing the inverse of the diffusion to see if i am able to obtain the original frame back implying diffusion operations make sense.
-        
-        /*diffusionOpWrapper( current.data, buffer.data(), byteStreamFinal.data(), width, height, subframeHeight, subframeWidth, performInverseDiffusion, sd_array) ;
-        current = cv::Mat(height, width, CV_8UC3, buffer.data()).clone() ;
-        std::string filenameInvDiffusion = "testResults/afterInvDiffusion" + std::to_string(i) + ".png" ;
-        cv::imwrite( filenameInvDiffusion, current) ;    */
+        diffusionOpWrapper( d_byteStreamFinal, d_input, frame.data, d_output, frame.data, width, height, subframeHeight, subframeWidth, performInverseDiffusion, d_sd_array, stream ) ;
+        std::swap(d_input, d_output) ;
 
         //INVERSE OF CONFUSION 
-        /*confusionOpWrapper(current.data, buffer.data(), width, height, subframeHeight, sc, performInverseConfusion );
-        current = cv::Mat(height, width, CV_8UC3, buffer.data()).clone() ;
-        std::string filenameInvConfusion = "testResults/afterInvConfusion" + std::to_string(i) + ".png" ;
-        cv::imwrite(filenameInvConfusion, current ); */
+        confusionOpWrapper(frame.data, d_input, frame.data, d_output, width, height, subframeHeight, sc, performInverseConfusion, stream);
+        std::swap(d_input, d_output) ;
+    } */
+
+    /*if( frameCount % 100 == 0) {
+        cudaMemcpyAsync(h_frame_pinned, d_input, width * height * NUM_CHANNELS * sizeof( unsigned char ), cudaMemcpyDeviceToHost);
+        //cudaStreamSynchronize(stream);   
+        std::string filenameInvConfusion = "testResults/afterInvEncription" + std::to_string(frameCount) + ".png" ;
+        cv::Mat decryptedMat(height, width, CV_8UC3, h_frame_pinned);
+        cv::imwrite(filenameInvConfusion, decryptedMat);
+    }*/
     
+    /*
+    cv::Mat decryptedFrame(height, width, CV_8UC3, h_frame_pinned);
+    writer.write(decryptedFrame); */
+
+    frameCount ++ ;    
     }
+
+    //fps measuring
+    auto t1 = std::chrono::high_resolution_clock::now();
+    double seconds =
+    std::chrono::duration<double>(t1 - t0).count();
+    std::cout << "FPS: " << frameCount / seconds << std::endl;
+
+    cudaStreamDestroy(stream1);
+
+    cudaEventDestroy(frameReady[0]);
+    cudaEventDestroy(frameReady[1]);
+    
+    freeMemory( d_byteStreamFinal ) ;
+    for (int i = 0; i < 2; i++) {
+        cudaFree(d_input[i]);
+        cudaFree(d_output[i]);
+    }
+    cudaFreeHost( h_frame_pinned[0] ) ;
+    cudaFreeHost( h_frame_pinned[1] ) ;
+    cudaFreeHost( keysAndControlPsPinned ) ; 
+    cudaFree(d_keysAndControlPs);
+    cudaFree(d_values4ByteStream_1);
+    cudaFree(d_values4ByteStream_2);
+
+    //cudaFree(d_inputTry);
 
     return 0;
 }
 
-void PRBGAinit( int numParameters, double ** d_keysAndControlPs, unsigned char ** d_values4ByteStream_1, unsigned char **d_values4ByteStream_2, unsigned char ** d_byteStreamFinal, int PRBGAiterations  ){
+void PRBGA_init( int numParameters,
+                 double ** d_keysAndControlPs,
+                 unsigned char ** d_values4ByteStream_1, 
+                 unsigned char ** d_values4ByteStream_2, 
+                 unsigned char ** d_byteStreamFinal, 
+                 int PRBGAiterations  ) {
 
+    //printf("numParameters: %d\n", numParameters);
     int numKeys = numParameters/2 ;
 
     int totalSize = numKeys * PRBGAiterations * 6 ; 
+    //int totalSize = numKeys * PRBGAiterations * 6 ;
 
-    cudaMalloc( (void **) d_keysAndControlPs, numParameters * sizeof( double ) ) ;
-    cudaMalloc( (void **) d_values4ByteStream_1, totalSize *  sizeof( unsigned char ) ) ;
-    cudaMalloc( (void **) d_values4ByteStream_2, totalSize * sizeof( unsigned char ) ) ; 
-    cudaMalloc( (void **) d_byteStreamFinal, totalSize * sizeof( unsigned char ) ) ; 
-    
+    //printf("totalSize: %d\n", totalSize );
+
+    cudaMalloc( ( void ** ) d_keysAndControlPs, numParameters * sizeof( double ) ) ;
+    cudaMalloc( ( void ** ) d_values4ByteStream_1, totalSize * sizeof( unsigned char ) ) ;
+    cudaMalloc( ( void ** ) d_values4ByteStream_2, totalSize * sizeof( unsigned char ) ) ;  
+    cudaMalloc( ( void ** ) d_byteStreamFinal, totalSize * sizeof( unsigned char ) ) ;
+
     return;
-
 }
 
-void print_ByteStreamFinal( std::vector<unsigned char> byteStreamFinal, int subframeHeight, int subframeWidth ) {
+//function used to allocate space for the arrays containing frame encoding used during the confusion and diffusion
+void device_frame_allocation ( int total_pixels, unsigned char ** d_sd_array, int numSubFrames  ) {
+
+    //cudaMalloc( (void **) d_input, total_pixels * NUM_CHANNELS * sizeof( unsigned char ) ) ;
+    //cudaMalloc( (void **) d_output, total_pixels * NUM_CHANNELS * sizeof( unsigned char ) ) ;
+    cudaMalloc( (void **) d_sd_array, numSubFrames * sizeof( unsigned char ) ) ; //used for sd seeds allocation for diffusion
+
+    //printf("total_pixels: %d", total_pixels) ;
+
+    return ;
+}
+
+void print_ByteStreamFinal( std::vector<unsigned char> byteStreamFinal, int subframeHeight, int subframeWidth, int PRBGAiterations) {
 
     int j = 0 ;
 
     printf( "\nbyteStreamFinal size: %d\n", byteStreamFinal.size() ) ;
     for ( int i = 0; i < byteStreamFinal.size(); i++ ) {
-        if( (i % (subframeHeight * subframeWidth ) ) == 0 ) {
+        if( (i % (subframeHeight * subframeWidth * PRBGAiterations ) ) == 0 ) {
             printf("\n%d\n", j) ;
             j++;
         }
@@ -221,4 +292,42 @@ void print_ByteStreamFinal( std::vector<unsigned char> byteStreamFinal, int subf
 
     return ;
 
+}
+
+void print_frameEncoding( const cv::Mat& img ) {
+
+    printf("\nprinting all the pixel encodings of the frame: \n");
+
+    for (int y = 0; y < img.rows; y++) {
+        for (int x = 0; x < img.cols; x++) {
+            cv::Vec3b pixel = img.at<cv::Vec3b>(x, y);  // B, G, R
+            std::cout << "Pixel (" << x << "," << y << "): "
+                      << "B=" << (int)pixel[0] << " "
+                      << "G=" << (int)pixel[1] << " "
+                      << "R=" << (int)pixel[2] << std::endl;    
+        } 
+    } 
+
+    return;
+}
+
+void freeMemory( unsigned char *d_byteStreamFinal ) {
+
+    cudaFree( d_byteStreamFinal );
+    //cudaFree( d_input ) ;
+    //cudaFree( d_output ) ;
+
+    return ; 
+}
+
+//prints the array containing control parameters and keys for later prbgas
+void printMainKeys ( double * keysAndControlPs, int N ) {
+
+    for( int i = 0; i< N; i++){
+        if(i % 2 == 0 ) { printf("\n"); }
+    
+        printf( " %f ", keysAndControlPs[i] ) ;
+    } 
+    printf("\n") ;
+    
 }

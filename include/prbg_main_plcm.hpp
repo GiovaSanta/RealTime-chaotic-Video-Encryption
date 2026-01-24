@@ -8,6 +8,13 @@ std::vector<double> generatePRBGMainKeys(double x0, double p, int numParameters4
 
 std::vector<double> generatePRBGMainKeysv2( double x0, double p, int n, uint64_t *sc) ;
 
-void PRBGAinit( int numParameters, double ** d_keysAndControlPs, unsigned char ** d_values4ByteStream_1, unsigned char **d_values4ByteStream_2, unsigned char ** d_byteStreamFinal, int PRBGAiterations ) ; //memory allocations for the arrays used in prbga kernel
+void generatePRBGMainKeysv3Pinned( double x0, double p, int n, uint64_t* sc, double* out ) ;
+
+void PRBGA_init( int numParameters, 
+                 double ** d_keysAndControlPs, 
+                 unsigned char ** d_values4ByteStream_1, 
+                 unsigned char **d_values4ByteStream_2, 
+                 unsigned char ** d_byteStreamFinal, 
+                 int PRBGAiterations ) ; //memory allocations for the arrays used in prbga kernel
 
 #endif
