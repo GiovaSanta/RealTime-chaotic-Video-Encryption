@@ -2,13 +2,13 @@
 #include <opencv2/opencv.hpp>
 #include <stdint.h>
 #include <cuda_runtime.h>
-#include "../include/encrypt_kernel.hpp"
-#include "../include/prbg_main_plcm.hpp"
-#include "../include/confusion_kernel.hpp"
-#include "../include/diffusion_kernel.hpp"
+#include "../../include/encrypt_kernel.hpp"
+#include "../../include/prbg_main_plcm.hpp"
+#include "../../include/confusion_kernel.hpp"
+#include "../../include/diffusion_kernel.hpp"
 #include <math.h>
 #include <chrono>
-#include "../include/utils.hpp"
+#include "../../include/utils.hpp"
 
 #define ROUNDS 5
 #define NUM_CHANNELS 3 // number RGB channels
@@ -129,11 +129,11 @@ int main () {
                 &d_byteStreamFinal, 
                 PRBGAiterations ) ;
 
-    device_frame_allocation ( width * height, 
-                              &d_input, 
-                              &d_output,
-                              &d_sd_array, 
-                              numSubFrames ) ;
+    device_frame_allocation_old ( width * height, 
+                                  &d_input, 
+                                  &d_output,
+                                  &d_sd_array, 
+                                  numSubFrames ) ;
 
     PRBGAandByteStreamGenWrapper( d_keysAndControlPs, 
                                   //keysAndControlPs,
@@ -232,7 +232,7 @@ void PRBGA_init( int numParameters,
 }
 
 //function used to allocate space for the arrays containing frame encoding used during the confusion and diffusion
-void device_frame_allocation ( int total_pixels, unsigned char ** d_input, unsigned char ** d_output, unsigned char ** d_sd_array, int numSubFrames  ) {
+void device_frame_allocation_old ( int total_pixels, unsigned char ** d_input, unsigned char ** d_output, unsigned char ** d_sd_array, int numSubFrames  ) {
 
     cudaMalloc( (void **) d_input, total_pixels * NUM_CHANNELS * sizeof( unsigned char ) ) ;
     cudaMalloc( (void **) d_output, total_pixels * NUM_CHANNELS * sizeof( unsigned char ) ) ;

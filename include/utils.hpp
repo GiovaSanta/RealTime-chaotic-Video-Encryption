@@ -11,4 +11,6 @@ void device_frame_allocation ( int total_pixels, unsigned char ** d_sd_array, in
 
 void printMainKeys ( double * keysAndControlPs, int N ) ;
 
+static int computeBitrate(int w, int h, int fps) ;
+
 #endif

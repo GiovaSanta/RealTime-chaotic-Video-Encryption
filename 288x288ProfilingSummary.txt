@@ -1,0 +1,31 @@
+==19326== NVPROF is profiling process 19326, command: ./encryptApp
+==19326== Warning: Unified Memory Profiling is not supported on the underlying platform. System requirements for unified memory can be found at: http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#um-requirements
+==19326== Profiling application: ./encryptApp
+==19326== Profiling result:
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+ GPU activities:   37.99%  1.75136s      2935  596.72us  557.63us  800.87us  inverseConfusionKernel(unsigned char const *, unsigned char*, int, int, int, unsigned long)
+                   16.49%  760.14ms      2935  258.99us  237.82us  303.87us  invdiffusionKernelv7(unsigned char*, unsigned char*, unsigned char*, int, int, int, int, int, unsigned char*)
+                   15.41%  710.26ms      2935  242.00us  223.03us  294.65us  diffusionKernelv7(unsigned char*, unsigned char*, unsigned char*, int, int, int, int, int, unsigned char*, int)
+                   14.88%  685.79ms       587  1.1683ms  1.0082ms  1.3993ms  prbgaKernelv4(unsigned char*, unsigned char*, unsigned char*, double const *, int)
+                   13.84%  637.75ms      2935  217.29us  213.86us  224.70us  confusionKernel(unsigned char*, unsigned char*, int, int, int, unsigned long)
+                    0.77%  35.347ms      1174  30.107us  27.242us  40.783us  [CUDA memcpy DtoH]
+                    0.63%  29.055ms      1174  24.749us  18.802us  47.711us  [CUDA memcpy HtoD]
+      API calls:   68.48%  2.79413s       587  4.7600ms  10.104us  6.1436ms  cudaEventSynchronize
+                   17.57%  717.06ms     12327  58.169us  34.636us  4.6153ms  cudaLaunchKernel
+                    8.10%  330.35ms         1  330.35ms  330.35ms  330.35ms  cudaStreamCreate
+                    4.05%  165.12ms      2348  70.321us  39.011us  2.6514ms  cudaMemcpyAsync
+                    1.45%  59.331ms      1174  50.537us  20.573us  2.2771ms  cudaEventRecord
+                    0.15%  6.0730ms       587  10.345us  6.4060us  42.189us  cudaEventElapsedTime
+                    0.10%  4.0982ms         9  455.35us  14.063us  3.7370ms  cudaFree
+                    0.04%  1.7592ms         5  351.84us  13.542us  927.32us  cudaHostAlloc
+                    0.04%  1.5685ms         9  174.28us  11.302us  742.21us  cudaMalloc
+                    0.01%  590.12us         5  118.02us  17.032us  287.40us  cudaFreeHost
+                    0.00%  117.34us        97  1.2090us     677ns  25.000us  cuDeviceGetAttribute
+                    0.00%  24.740us         1  24.740us  24.740us  24.740us  cudaStreamDestroy
+                    0.00%  20.365us         4  5.0910us  3.6460us  8.0730us  cudaEventCreate
+                    0.00%  15.417us         4  3.8540us  2.9170us  5.9380us  cudaEventDestroy
+                    0.00%  8.8020us         1  8.8020us  8.8020us  8.8020us  cuDeviceTotalMem
+                    0.00%  6.6140us         3  2.2040us  1.2500us  3.0210us  cuDeviceGetCount
+                    0.00%  3.1250us         2  1.5620us  1.4070us  1.7180us  cuDeviceGet
+                    0.00%  2.3440us         1  2.3440us  2.3440us  2.3440us  cuDeviceGetName
+                    0.00%     989ns         1     989ns     989ns     989ns  cuDeviceGetUuid
